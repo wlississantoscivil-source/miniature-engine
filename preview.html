@@ -1,0 +1,1079 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Minha Obra — Preview</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@500;600&family=IBM+Plex+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+/* =========================================================
+   PALETA (a sua) + cores semânticas derivadas dela
+   ========================================================= */
+:root{
+  --terracota:#A65A3A;      /* principal: botões, item ativo, barras */
+  --terracota-esc:#8A4529;
+  --cafe:#3B2A22;           /* texto e faixas escuras */
+  --creme:#FAF6F2;          /* fundo */
+  --ambar:#E0A458;          /* atenção */
+  --vermelho:#C0392B;       /* atrasado / crítico */
+
+  --ok:#4E7A3A;  --ok-bg:#E5EEDC;                  /* verde oliva, no tom quente da paleta */
+  --at:#E0A458;  --at-bg:#FBEBD2; --at-tx:#7A4A10;  /* âmbar: texto escurecido p/ ler no sol */
+  --cr:#C0392B;  --cr-bg:#FBE7E4;
+
+  --branco:#FFFFFF;
+  --linha:#E3D8CE;
+  --apagado:#6B5549;
+  --cafe-2:#4E3A30;
+  --cafe-claro:#D9C7BA;
+  --terra-bg:#F4E8E0;
+
+  --mono:'IBM Plex Mono',ui-monospace,Consolas,monospace;
+  --sans:'IBM Plex Sans',system-ui,'Segoe UI',sans-serif;
+  --r:6px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--creme);color:var(--cafe);font-family:var(--sans);font-size:16px;line-height:1.4}
+button,input,textarea,select{font:inherit;color:inherit}
+button{cursor:pointer;border:0;background:none}
+svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+.lab{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--apagado)}
+.mono{font-family:var(--mono)}
+.muted{color:var(--apagado)}
+.cr-tx{color:var(--cr)} .ok-tx{color:var(--ok)} .at-tx{color:var(--at-tx)}
+
+/* ===================== ESQUELETO ===================== */
+.app{display:flex;min-height:100vh}
+.side{display:none}
+.main{flex:1;min-width:0;padding-bottom:92px}
+
+.bnav{position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--branco);border-top:1px solid var(--linha);
+  display:grid;grid-auto-flow:column;grid-auto-columns:1fr;padding:4px 4px calc(6px + env(safe-area-inset-bottom))}
+.bnav button{min-height:60px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+  font-size:12px;font-weight:600;color:var(--apagado);border-radius:var(--r);position:relative}
+.bnav button.on{color:var(--terracota)}
+.bnav button.on::before{content:"";position:absolute;top:-5px;left:22%;right:22%;height:3px;background:var(--terracota);border-radius:0 0 3px 3px}
+.badge{position:absolute;top:6px;left:calc(50% + 6px);min-width:20px;height:20px;padding:0 5px;border-radius:10px;background:var(--cr);color:#fff;font-size:11px;font-weight:700;display:grid;place-items:center}
+
+@media (min-width:900px){
+  .side{display:flex;flex-direction:column;width:240px;flex:none;background:var(--cafe);color:var(--creme);
+    position:sticky;top:0;height:100vh;padding:20px 12px}
+  .brand{display:flex;align-items:center;gap:10px;padding:4px 10px 22px;font-weight:700;font-size:19px}
+  .brand i{width:22px;height:22px;border-radius:5px;background:var(--terracota)}
+  .side nav{display:flex;flex-direction:column;gap:2px}
+  .side nav button{display:flex;align-items:center;gap:12px;min-height:48px;padding:0 12px;border-radius:var(--r);
+    font-size:15px;font-weight:500;color:var(--cafe-claro);text-align:left;position:relative}
+  .side nav button:hover{background:var(--cafe-2);color:var(--creme)}
+  .side nav button.on{background:var(--terracota);color:#fff;font-weight:600}
+  .side nav .badge{position:static;margin-left:auto}
+  .side .me{margin-top:auto;border-top:1px solid var(--cafe-2);padding:14px 4px 0;font-size:14px}
+  .side .me .lab{color:var(--cafe-claro);margin:0 6px 8px}
+  .side .who-sw{display:grid;grid-template-columns:1fr 1fr;gap:4px;background:var(--cafe-2);padding:4px;border-radius:8px}
+  .side .who-sw button{min-height:44px;border-radius:6px;font-size:14px;font-weight:600;color:var(--cafe-claro)}
+  .side .who-sw button.on{background:var(--creme);color:var(--cafe)}
+  .bnav{display:none}
+  .main{padding-bottom:40px}
+}
+
+/* ===================== FAIXA DO TOPO ===================== */
+.hd{background:var(--cafe);color:var(--creme)}
+.hd-in{max-width:1180px;margin:0 auto;padding:16px 16px 0}
+.hd-row{display:flex;align-items:center;gap:12px;min-height:48px}
+.hd h1{font-size:22px;font-weight:700;letter-spacing:-.01em;line-height:1.2}
+.hd .sub{font-family:var(--mono);font-size:12px;letter-spacing:.06em;color:var(--cafe-claro);margin-top:3px;text-transform:uppercase}
+.hd .push{margin-left:auto}
+.back{width:44px;height:44px;border-radius:var(--r);display:grid;place-items:center;background:var(--cafe-2);flex:none;color:var(--creme)}
+.hd .date{font-family:var(--mono);font-size:12px;letter-spacing:.08em;color:var(--ambar);text-transform:uppercase;padding-bottom:4px}
+.tabs{display:flex;gap:2px;overflow-x:auto;scrollbar-width:none;margin:12px -16px 0;padding:0 16px}
+.tabs::-webkit-scrollbar{display:none}
+.tabs button{font-family:var(--mono);font-size:13px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;color:var(--cafe-claro);
+  min-height:48px;padding:0 11px;white-space:nowrap;border-bottom:3px solid transparent;position:relative}
+.tabs button.on{color:var(--ambar);border-bottom-color:var(--ambar)}
+.tabs .dot{display:inline-block;min-width:18px;height:18px;border-radius:9px;background:var(--ambar);color:var(--cafe);font-size:11px;line-height:18px;text-align:center;margin-left:6px;padding:0 4px}
+.tabs .sep{width:1px;background:var(--cafe-2);margin:12px 6px;flex:none}
+.hd-pad{height:16px}
+
+/* ===================== CONTEÚDO ===================== */
+.ct{max-width:1180px;margin:0 auto;padding:12px 12px 0;display:flex;flex-direction:column;gap:10px}
+@media (min-width:900px){.ct{padding:24px 24px 0;gap:16px}.hd-in{padding:22px 24px 0}.tabs{margin:14px -24px 0;padding:0 24px}}
+
+.card{background:var(--branco);border:1px solid var(--linha);border-radius:var(--r)}
+.pad{padding:14px}
+.col{display:flex;flex-direction:column;gap:10px}
+@media (min-width:900px){.col{gap:16px}}
+
+.btn{min-height:48px;padding:0 18px;border-radius:var(--r);font-weight:600;font-size:16px;display:inline-flex;align-items:center;justify-content:center;gap:8px;white-space:nowrap}
+.btn.pri{background:var(--terracota);color:#fff}
+.btn.pri:active{background:var(--terracota-esc)}
+.btn.sec{background:var(--branco);color:var(--terracota);border:2px solid var(--terracota)}
+.btn.esc{background:var(--cafe-2);color:var(--creme)}
+.btn.okb{background:var(--ok);color:#fff}
+.btn.wa{background:var(--branco);color:var(--ok);border:2px solid var(--ok)}
+.btn.full{width:100%}
+.btn.sm{min-height:44px;padding:0 14px;font-size:15px}
+.btn svg.i{width:20px;height:20px}
+.btns{display:flex;gap:8px;flex-wrap:wrap}
+
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (min-width:700px){.kpis{grid-template-columns:repeat(4,1fr);gap:12px}.kpis.k3{grid-template-columns:repeat(3,1fr)}}
+.kpi{padding:12px 14px 14px;border-top:5px solid var(--cafe);text-align:left;width:100%}
+.kpi.t{border-top-color:var(--terracota)} .kpi.ok{border-top-color:var(--ok)} .kpi.at{border-top-color:var(--at)} .kpi.cr{border-top-color:var(--cr)}
+.kpi .n{display:block;white-space:nowrap;font-size:clamp(26px,7.4vw,34px);font-weight:700;line-height:1.05;margin-top:6px;letter-spacing:-.02em}
+.kpi .n small{font-size:16px;font-weight:600;letter-spacing:0;margin-right:2px}
+.kpi.cr .n{color:var(--cr)} .kpi.ok .n.g{color:var(--ok)}
+.kpi .d{font-size:14px;color:var(--apagado);margin-top:4px}
+.kpi.cr .d{color:var(--cr);font-weight:600}
+
+.tag{display:inline-flex;align-items:center;gap:6px;font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.05em;text-transform:uppercase;
+  padding:5px 8px;border-radius:4px;white-space:nowrap;line-height:1}
+.tag::before{content:"";width:8px;height:8px;border-radius:50%;background:currentColor}
+.tag.ok{background:var(--ok-bg);color:var(--ok)}
+.tag.at{background:var(--at-bg);color:var(--at-tx)}
+.tag.cr{background:var(--cr);color:#fff}
+.tag.cr::before{background:#fff}
+.tag.ne{background:#F1EAE3;color:var(--apagado)}
+.tag.plain::before{display:none}
+
+.alerts{display:flex;flex-direction:column;gap:8px}
+.alert{display:flex;align-items:center;gap:12px;min-height:56px;padding:10px 14px;border-radius:var(--r);font-weight:600;text-align:left;width:100%;border-left:6px solid}
+.alert.cr{background:var(--cr-bg);border-color:var(--cr);color:#8E2318}
+.alert.at{background:var(--at-bg);border-color:var(--at);color:var(--at-tx)}
+.alert.ok{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.alert .go{margin-left:auto;white-space:nowrap;font-family:var(--mono);font-size:13px;letter-spacing:.06em}
+.alert small{display:block;font-weight:500;font-size:14px;margin-top:2px}
+
+.seg{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none}
+.seg::-webkit-scrollbar{display:none}
+.seg button{min-height:44px;padding:0 14px;border-radius:22px;border:1.5px solid var(--linha);background:var(--branco);font-weight:600;font-size:15px;white-space:nowrap;color:var(--cafe)}
+.seg button.on{background:var(--cafe);border-color:var(--cafe);color:var(--creme)}
+.seg button .c{font-family:var(--mono);font-size:12px;margin-left:6px;opacity:.75}
+.seg.big button{min-height:52px;font-size:16px;flex:1}
+
+.sec-h{display:flex;align-items:center;justify-content:space-between;gap:10px;min-height:32px;flex-wrap:wrap}
+.h2{font-size:19px;font-weight:700}
+
+/* cartões de obra */
+.obras{display:grid;gap:10px}
+@media (min-width:700px){.obras{grid-template-columns:1fr 1fr;gap:14px}}
+@media (min-width:1200px){.obras{grid-template-columns:repeat(3,1fr)}}
+.obra{text-align:left;width:100%;border-top:5px solid var(--ok);display:flex;flex-direction:column}
+.obra.cr{border-top-color:var(--cr)} .obra.at{border-top-color:var(--at)} .obra.ne{border-top-color:#B8A79A}
+.obra .top{padding:14px 14px 10px;display:flex;gap:10px;align-items:flex-start}
+.obra .nm{font-size:19px;font-weight:700;line-height:1.2}
+.obra .og{font-size:14px;color:var(--apagado);margin-top:3px}
+.obra .top .tag{margin-left:auto;flex:none}
+.obra .stats{display:grid;grid-template-columns:repeat(3,1fr);border-top:1px solid var(--linha);margin-top:auto}
+.obra .stats>div{padding:10px 12px 12px;border-left:1px solid var(--linha)}
+.obra .stats>div:first-child{border-left:0}
+.obra .stats b{display:block;white-space:nowrap;font-size:clamp(19px,5.6vw,24px);font-weight:700;line-height:1.1;margin-top:4px;letter-spacing:-.01em}
+.obra .stats b small{font-size:13px;font-weight:600}
+.obra .stats b.cr{color:var(--cr)} .obra .stats b.ok{color:var(--ok)}
+.obra .stats .s{font-size:13px;color:var(--apagado);margin-top:2px}
+.obra .stats .s.cr{color:var(--cr);font-weight:600}
+.obra .stats .s.ok{color:var(--ok);font-weight:600}
+
+/* listas */
+.list .row{display:flex;align-items:center;gap:12px;padding:12px 14px;border-top:1px solid var(--linha);min-height:64px;width:100%;text-align:left}
+.list .row:first-child{border-top:0}
+.list .row.cr{background:var(--cr-bg)}
+.list .row.at{background:#FDF5EA}
+.row .tx{flex:1;min-width:0}
+.row .tt{font-size:16px;font-weight:600;line-height:1.3}
+.row .mt{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--apagado);margin-top:3px;text-transform:uppercase}
+.row .val{font-size:17px;font-weight:700;white-space:nowrap;text-align:right}
+.row .val .tag{margin-top:6px}
+.list-h{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--linha);flex-wrap:wrap}
+.list-h .nm{font-size:18px;font-weight:700}
+.list-h .tot{margin-left:auto;text-align:right}
+.list-h .tot b{display:block;font-size:22px;font-weight:700;letter-spacing:-.01em}
+.list-f{padding:10px 14px 14px;border-top:1px solid var(--linha)}
+.list-t{display:flex;justify-content:space-between;align-items:center;gap:10px;padding:14px;border-top:2px solid var(--cafe);font-weight:700;font-size:18px;background:#FBF8F5}
+
+.grid2{display:grid;gap:10px}
+@media (min-width:900px){.grid2{grid-template-columns:1fr 1fr;gap:16px;align-items:start}}
+.prog{height:12px;background:#F0E7DF;border-radius:6px;overflow:hidden;margin:10px 0 8px}
+.prog i{display:block;height:100%;background:var(--terracota);border-radius:6px}
+.prog.at i{background:var(--at)} .prog.ok i{background:var(--ok)}
+.big{font-size:34px;font-weight:700;letter-spacing:-.02em;line-height:1.05}
+.bars{display:flex;flex-direction:column;gap:12px;margin-top:12px}
+.bar .l{display:flex;justify-content:space-between;gap:10px;font-size:15px;font-weight:500}
+.bar .l b{font-weight:700;white-space:nowrap}
+.bar .tr{height:12px;background:#F3ECE5;border-radius:3px;margin-top:5px}
+.bar .tr i{display:block;height:100%;background:var(--terracota);border-radius:3px}
+.bar .sub{font-family:var(--mono);font-size:12px;color:var(--apagado);margin-top:4px}
+
+/* módulos da obra (atalhos no Resumo) */
+.mods{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+@media (min-width:700px){.mods{grid-template-columns:repeat(4,1fr);gap:12px}}
+.mod{display:flex;flex-direction:column;gap:6px;align-items:flex-start;padding:14px;min-height:112px;text-align:left;width:100%;border-left:5px solid var(--terracota)}
+.mod.at{border-left-color:var(--at)} .mod.cr{border-left-color:var(--cr)} .mod.ok{border-left-color:var(--ok)}
+.mod .mi{width:40px;height:40px;border-radius:8px;background:var(--terra-bg);color:var(--terracota);display:grid;place-items:center}
+.mod b{font-size:16px}
+.mod span{font-size:14px;color:var(--apagado);line-height:1.3}
+.mod.at span{color:var(--at-tx);font-weight:600} .mod.cr span{color:var(--cr);font-weight:600}
+
+/* dados da obra */
+.dl{display:grid;grid-template-columns:1fr;gap:0}
+@media (min-width:700px){.dl{grid-template-columns:1fr 1fr}}
+.dl>div{padding:12px 14px;border-top:1px solid var(--linha)}
+.dl>div:first-child{border-top:0}
+@media (min-width:700px){.dl>div:nth-child(2){border-top:0}.dl>div:nth-child(even){border-left:1px solid var(--linha)}}
+.dl b{display:block;font-size:17px;font-weight:600;margin-top:4px}
+
+/* tabelas (orçamento / folha) */
+.tbl{width:100%;border-collapse:collapse;font-size:15px}
+.tbl th{font-family:var(--mono);font-size:12px;font-weight:600;letter-spacing:.06em;text-transform:uppercase;color:var(--apagado);text-align:left;padding:10px 14px;border-bottom:1px solid var(--linha);white-space:nowrap}
+.tbl td{padding:12px 14px;border-bottom:1px solid var(--linha);vertical-align:middle}
+.tbl td.r,.tbl th.r{text-align:right;white-space:nowrap}
+.tbl tr:last-child td{border-bottom:0}
+.tbl tfoot td{border-top:2px solid var(--cafe);font-weight:700;font-size:17px;background:#FBF8F5}
+.tbl .mini{height:8px;background:#F0E7DF;border-radius:4px;margin-top:6px;overflow:hidden}
+.tbl .mini i{display:block;height:100%;background:var(--terracota)}
+@media (max-width:699px){
+  .tbl.stack thead{display:none}
+  .tbl.stack tr{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 14px;border-bottom:1px solid var(--linha)}
+  .tbl.stack td{padding:0;border:0}
+  .tbl.stack td.hide-m{display:none}
+  .tbl.stack td.full{grid-column:1/-1}
+  .tbl.stack tfoot tr{background:#FBF8F5;border-top:2px solid var(--cafe)}
+  .tbl.stack tfoot td{border:0;background:none}
+}
+
+/* anexo planilha */
+.file{display:flex;align-items:center;gap:14px;padding:14px}
+.file .xl{width:52px;height:60px;border-radius:6px;background:#E3EDDD;color:#2F6B2A;display:grid;place-items:center;font-family:var(--mono);font-weight:700;font-size:13px;flex:none;border:1px solid #C9DCBF}
+.drop{border:2px dashed var(--cafe-claro);border-radius:var(--r);padding:22px 16px;text-align:center;color:var(--apagado);display:flex;flex-direction:column;align-items:center;gap:8px;cursor:pointer;background:#FCFAF8}
+.drop:hover{border-color:var(--terracota);color:var(--terracota)}
+.drop input{display:none}
+
+/* cotações */
+.prop{display:grid;grid-template-columns:1fr auto;gap:4px 12px;padding:14px;border-top:1px solid var(--linha);align-items:center}
+.prop:first-of-type{border-top:0}
+.prop.best{background:var(--ok-bg);border-left:6px solid var(--ok);padding-left:10px}
+.prop.late{background:#FDF5EA}
+.prop .pn{font-size:17px;font-weight:700}
+.prop .pt{font-size:22px;font-weight:700;text-align:right;white-space:nowrap}
+.prop .pd{font-family:var(--mono);font-size:12px;color:var(--apagado);letter-spacing:.03em;text-transform:uppercase}
+.prop .why{grid-column:1/-1;margin-top:6px;font-size:14px;font-weight:600}
+.prop.best .why{color:var(--ok)} .prop.late .why{color:var(--at-tx)}
+
+/* presença */
+.pres-top{display:flex;flex-direction:column;gap:10px}
+@media (min-width:700px){.pres-top{flex-direction:row;align-items:center}}
+.counter{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap}
+.counter b{font-size:40px;font-weight:700;line-height:1;letter-spacing:-.02em}
+.counter span{font-size:16px;color:var(--apagado)}
+.emp{padding:12px 14px;border-top:1px solid var(--linha)}
+.emp:first-child{border-top:0}
+.emp .who{display:flex;align-items:baseline;gap:8px;flex-wrap:wrap;margin-bottom:8px}
+.emp .who b{font-size:17px}
+.emp .who span{font-size:14px;color:var(--apagado)}
+.emp .who .tag{margin-left:auto}
+@media (min-width:900px){.emp{display:grid;grid-template-columns:1fr 440px;align-items:center;gap:16px}.emp .who{margin:0}}
+.opts{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.opts button{min-height:52px;border:1.5px solid var(--linha);border-radius:var(--r);background:var(--branco);font-weight:600;font-size:15px;color:var(--cafe)}
+.opts button.on.P{background:var(--ok);border-color:var(--ok);color:#fff}
+.opts button.on.F{background:var(--cr);border-color:var(--cr);color:#fff}
+.opts button.on.A{background:var(--at);border-color:var(--at);color:var(--cafe)}
+.opts button.on.FG{background:var(--cafe);border-color:var(--cafe);color:var(--creme)}
+.opts.c3{grid-template-columns:repeat(4,1fr)}
+.sticky-save{position:sticky;bottom:84px;z-index:5;padding:10px 0 0;background:linear-gradient(transparent,var(--creme) 30%)}
+@media (min-width:900px){.sticky-save{bottom:0;padding-bottom:16px}}
+
+/* diário */
+.photos{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+@media (min-width:700px){.photos{grid-template-columns:repeat(4,1fr)}}
+.ph{aspect-ratio:4/3;border-radius:var(--r);position:relative;overflow:hidden;display:flex;align-items:flex-end;color:#fff}
+.ph span{position:relative;z-index:1;font-size:13px;font-weight:600;padding:8px 10px;background:linear-gradient(transparent,rgba(30,20,15,.75));width:100%}
+.ph svg{position:absolute;top:10px;right:10px;width:22px;height:22px;opacity:.8}
+.ph.add{background:var(--branco);border:2px dashed var(--terracota);color:var(--terracota);align-items:center;justify-content:center;flex-direction:column;gap:6px;font-weight:700;cursor:pointer}
+.ph.add svg{position:static;width:34px;height:34px;opacity:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px}
+.chip{min-height:44px;padding:0 14px;border-radius:22px;border:1.5px solid var(--linha);background:var(--branco);font-weight:600;font-size:15px;display:inline-flex;align-items:center;gap:6px}
+.chip.on{background:var(--ok-bg);border-color:var(--ok);color:var(--ok)}
+.chip.on::before{content:"✓";font-weight:700}
+.field{display:flex;flex-direction:column;gap:6px}
+.field textarea{width:100%;min-height:120px;padding:12px 14px;border:1.5px solid var(--linha);border-radius:var(--r);background:var(--branco);font-size:16px;line-height:1.5;resize:vertical}
+.field textarea:focus{outline:none;border-color:var(--terracota);box-shadow:0 0 0 3px #A65A3A22}
+.field textarea.edited{border-color:var(--at);background:#FFFBF4}
+.wx{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.wx button{min-height:52px;border:1.5px solid var(--linha);border-radius:var(--r);background:var(--branco);font-weight:600;font-size:14px}
+.wx button.on{background:var(--cafe);border-color:var(--cafe);color:var(--creme)}
+.wx button.on.ch{background:#4A6B87;border-color:#4A6B87}
+.stamp{font-family:var(--mono);font-size:12px;letter-spacing:.04em;color:var(--apagado);text-transform:uppercase;line-height:1.6}
+
+/* fluxo de caixa */
+.chart{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;align-items:end;height:200px;padding:0 4px;border-bottom:2px solid var(--cafe)}
+.chart .m{display:flex;gap:4px;align-items:flex-end;justify-content:center;height:100%}
+.chart .m i{width:clamp(14px,4vw,30px);border-radius:3px 3px 0 0;display:block}
+.chart .m i.in{background:var(--ok)} .chart .m i.out{background:var(--terracota)}
+.chart .m.prev i{opacity:.45}
+.chart-l{display:grid;grid-template-columns:repeat(5,1fr);gap:8px;padding:8px 4px 0;text-align:center}
+.chart-l b{display:block;font-size:14px}
+.chart-l span{font-family:var(--mono);font-size:12px;font-weight:600}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:14px}
+.legend i{display:inline-block;width:12px;height:12px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+
+/* estado vazio */
+.empty{padding:44px 20px 40px;text-align:center;display:flex;flex-direction:column;align-items:center}
+.empty .ic{width:88px;height:88px;border-radius:50%;background:var(--terra-bg);display:grid;place-items:center;color:var(--terracota);margin-bottom:18px}
+.empty .ic svg.i{width:42px;height:42px;stroke-width:1.6}
+.empty h2{font-size:21px;font-weight:700;margin-bottom:8px}
+.empty p{font-size:16px;color:var(--apagado);max-width:380px;margin-bottom:22px}
+
+/* folha de baixo + aviso */
+.veil{position:fixed;inset:0;background:rgba(59,42,34,.55);z-index:40;display:none;align-items:flex-end;justify-content:center}
+.veil.on{display:flex}
+.sheet{background:var(--creme);width:100%;max-width:560px;border-radius:14px 14px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom));max-height:90vh;overflow:auto}
+@media (min-width:700px){.veil{align-items:center}.sheet{border-radius:12px}}
+.sheet h3{font-size:20px;margin-bottom:4px}
+.msg{background:#E7F2DD;border-radius:10px 10px 10px 2px;padding:14px;font-size:15px;white-space:pre-wrap;margin:14px 0 16px;border:1px solid #CFE2BF}
+.sheet .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.toast{position:fixed;left:50%;bottom:170px;transform:translateX(-50%) translateY(20px);background:var(--cafe);color:var(--creme);padding:14px 20px;border-radius:var(--r);
+  font-weight:600;opacity:0;transition:.2s;z-index:50;pointer-events:none;max-width:calc(100% - 32px);text-align:center}
+.toast.on{opacity:1;transform:translateX(-50%)}
+@media (min-width:900px){.toast{bottom:32px;left:calc(50% + 120px)}}
+
+.soon{padding:28px 18px;text-align:center;color:var(--apagado)}
+.soon b{display:block;color:var(--cafe);font-size:18px;margin-bottom:6px}
+</style>
+</head>
+<body>
+
+<div class="app">
+  <aside class="side">
+    <div class="brand"><i></i>Minha Obra</div>
+    <nav id="sidenav"></nav>
+    <div class="me"><div class="lab">Ver o preview como</div><div class="who-sw" id="whosw"></div></div>
+  </aside>
+  <main class="main" id="main"></main>
+</div>
+<nav class="bnav" id="bnav"></nav>
+
+<div class="veil" id="veil" onclick="if(event.target===this)closeSheet()"><div class="sheet" id="sheet"></div></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ======================== ÍCONES ======================== */
+const I = {
+  obras:'<path d="M3 21h18M5 21V8l7-4 7 4v13M9 21v-6h6v6"/>',
+  compras:'<path d="M5 8h14l-1.4 12H6.4z"/><path d="M9 8a3 3 0 0 1 6 0"/>',
+  notas:'<path d="M6 3h9l4 4v14H6z"/><path d="M14 3v5h5M9 13h7M9 17h5"/>',
+  forn:'<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7"/><circle cx="7" cy="18" r="2"/><circle cx="17" cy="18" r="2"/>',
+  mais:'<circle cx="5" cy="12" r="1.4"/><circle cx="12" cy="12" r="1.4"/><circle cx="19" cy="12" r="1.4"/>',
+  back:'<path d="M15 5l-7 7 7 7"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  wa:'<path d="M4 20l1.3-4A8 8 0 1 1 8 18.7z"/><path d="M9 9.5c0 3 2.5 5.5 5.5 5.5l1-1.5-2-1-1 1c-1-.5-1.5-1-2-2l1-1-1-2z"/>',
+  repeat:'<path d="M4 12a8 8 0 0 1 14-5l2 2M20 4v5h-5M20 12a8 8 0 0 1-14 5l-2-2M4 20v-5h5"/>',
+  check:'<path d="M5 12l5 5 9-10"/>',
+  warn:'<path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/>',
+  pix:'<path d="M12 3l9 9-9 9-9-9z"/><path d="M8 12h8"/>',
+  pay:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 10h18M7 15h4"/>',
+  clip:'<path d="M20 11l-8 8a5 5 0 0 1-7-7l8-8a3.5 3.5 0 0 1 5 5l-8 8a2 2 0 0 1-3-3l7-7"/>',
+  dados:'<rect x="5" y="4" width="14" height="17" rx="2"/><path d="M9 4V3h6v1M9 10h6M9 14h6M9 18h3"/>',
+  colab:'<circle cx="9" cy="8" r="3.2"/><path d="M3 20c0-3.3 2.7-5.5 6-5.5s6 2.2 6 5.5"/><circle cx="17" cy="9" r="2.5"/><path d="M16 14.6c2.9.2 5 2.2 5 5.4"/>',
+  diario:'<path d="M5 4h11a3 3 0 0 1 3 3v13H8a3 3 0 0 1-3-3z"/><path d="M5 17a3 3 0 0 1 3-3h11M9 8h6"/>',
+  orc:'<rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 9h18M3 14h18M9 4v16"/>',
+  cot:'<path d="M12 4v16M5 20h14M4 8h16"/><path d="M7 8l-3 7h6zM17 8l-3 7h6z"/>',
+  folha:'<path d="M4 6h16v12H4z"/><circle cx="12" cy="12" r="2.5"/><path d="M7 9v.01M17 15v.01"/>',
+  fluxo:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  camera:'<path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/>',
+  up:'<path d="M12 16V4M7 9l5-5 5 5M4 20h16"/>',
+  down:'<path d="M12 4v12M7 11l5 5 5-5M4 20h16"/>',
+  edit:'<path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M13 7l4 4"/>',
+  med:'<path d="M4 20h16M6 16l4-5 3 3 5-7"/>',
+  key:'<circle cx="8" cy="14" r="4"/><path d="M11 11l9-9M17 5l2 2M15 7l2 2"/>',
+  user:'<circle cx="12" cy="8" r="4"/><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5"/>',
+  img:'<rect x="3" y="5" width="18" height="14" rx="2"/><circle cx="9" cy="10" r="2"/><path d="M21 16l-5-5-8 8"/>',
+};
+const ic = (n, st='') => `<svg class="i" viewBox="0 0 24 24" ${st?`style="${st}"`:''}>${I[n]}</svg>`;
+const brl = (v) => 'R$ ' + v.toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
+const mil = (v) => Math.abs(v) >= 1000 ? (v/1000).toLocaleString('pt-BR',{maximumFractionDigits:1}) + ' mil' : v.toLocaleString('pt-BR');
+const pct = (v) => v.toLocaleString('pt-BR',{maximumFractionDigits:1}) + '%';
+
+/* ======================== DADOS DE EXEMPLO ========================
+   Hoje: segunda, 16/11/2026, 10:42. Base: PRD-FRONTEND.md            */
+const HOJE = 'Segunda · 16/11/2026';
+const OBRAS = [
+  {id:'vn', nome:'Escola Municipal Vila Nova', curto:'Escola Vila Nova', tipo:'Escola', orgao:'Prefeitura de Caruaru', status:'Em andamento', semNF:4, nfAtrasada:2, aPagar:20550, presenca:null},
+  {id:'ubs', nome:'UBS Centro', tipo:'UBS', orgao:'Prefeitura de Bezerros', status:'Em andamento', semNF:1, nfAtrasada:0, aPagar:2190.50, presenca:'07:42'},
+  {id:'ref', nome:'Refeitório Escola Agrícola', tipo:'Refeitório', orgao:'Governo do Estado', status:'Em andamento', semNF:1, nfAtrasada:0, aPagar:1400, presenca:'08:05'},
+  {id:'sp', nome:'Escola Rural Sítio Pedra', tipo:'Escola', orgao:'Prefeitura de Caruaru', status:'Paralisada', semNF:0, nfAtrasada:0, aPagar:0, presenca:'—'},
+  {id:'vr', nome:'UBS Vila Rica', tipo:'UBS', orgao:'Prefeitura de Gravatá', status:'Concluída', semNF:0, nfAtrasada:0, aPagar:0, presenca:'—'},
+];
+const PEND = [
+  {forn:'Zé Pedreiro Empreitadas', obra:'Escola Vila Nova', data:'10/11', desc:'Reboco interno bloco B (Material + Mão de obra)', valor:10000, dias:6},
+  {forn:'Zé Pedreiro Empreitadas', obra:'Escola Vila Nova', data:'14/11', desc:'Alvenaria bloco — 1ª quinzena', valor:7200, dias:2},
+  {forn:'Casa do Construtor Ltda', obra:'Escola Vila Nova', data:'03/11', desc:'50 sacos de cimento CP-II', valor:1850, dias:13},
+  {forn:'Areal São José', obra:'Escola Vila Nova', data:'07/11', desc:'Areia média 6 m³', valor:900, dias:9},
+  {forn:'Areal São José', obra:'Refeitório Esc. Agrícola', data:'12/11', desc:'Brita 1 — 10 m³', valor:1400, dias:4},
+  {forn:'Loca Máquinas', obra:'UBS Centro', data:'10/11', desc:'Andaime 20 peças — 30 dias', valor:850, dias:6},
+];
+/* colaboradores: nome, função, vínculo (D = diarista, E = do empreiteiro), diária, dias na 1ª quinz. nov, chave pix */
+const FUNC = [
+  ['José Cícero','Pedreiro','D',180,11,'(81) 99812-4410'],['Antônio Marcos','Pedreiro','D',180,11,'antonio.marcos@gmail.com'],
+  ['Severino Ramos','Pedreiro','D',180,10,'(81) 98877-1203'],['Gilberto Nunes','Carpinteiro','D',200,11,'(81) 99630-5521'],
+  ['Reginaldo Souza','Armador','D',200,9,'(81) 99104-7788'],['Francisco das Chagas','Servente','D',120,11,'(81) 98450-3312'],
+  ['Edvaldo Lima','Servente','D',120,9,'(81) 99271-0045'],['Josué Ferreira','Servente','D',120,11,'(81) 98123-6690'],
+  ['Damião Silva','Servente','D',120,10,'(81) 99955-2017'],['Valdir Santana','Servente','D',120,8,'(81) 98702-4431'],
+  ['Manoel Bezerra','Pedreiro','E'],['Raimundo Nonato','Pedreiro','E'],['Luiz Carlos','Pedreiro','E'],
+  ['Genivaldo Alves','Servente','E'],['Cícero Alves','Servente','E'],['Joelson Rocha','Servente','E'],
+];
+const ONTEM = ['P','P','P','P','P','P','F','P','P','A','P','P','P','P','P','P'];
+
+/* orçamento da licitação (8 itens do contrato, total R$ 1.248.300,00) */
+const ORC = [
+  ['1','Serviços preliminares',48600,48600],['2','Fundações',162400,93400],['3','Estrutura de concreto',298700,0],
+  ['4','Alvenaria e vedações',141900,0],['5','Cobertura',126300,0],['6','Instalações elétricas',118500,0],
+  ['7','Instalações hidrossanitárias',96800,0],['8','Revestimentos, pisos e pintura',255100,0],
+];
+/* cotações: o sistema escolhe a mais barata que chega dentro do prazo */
+const COT = [
+  {item:'Cimento CP-II 50 kg', qtd:'50 sacos', para:'18/11', limite:18, status:'Aberta', props:[
+    {f:'Casa do Construtor Ltda', un:37.00, n:50, frete:0, chega:17, cond:'Boleto 28 dias'},
+    {f:'Depósito Bezerros', un:35.50, n:50, frete:120, chega:18, cond:'Pix à vista'},
+    {f:'Mega Materiais', un:36.20, n:50, frete:0, chega:20, cond:'Boleto 21 dias'},
+  ]},
+  {item:'Bloco cerâmico 9×19×19', qtd:'2.000 un', para:'25/11', limite:25, status:'Aberta', props:[
+    {f:'Cerâmica Caruaru', un:0.98, n:2000, frete:250, chega:19, cond:'Pix à vista'},
+    {f:'Casa do Construtor Ltda', un:1.05, n:2000, frete:0, chega:18, cond:'Boleto 28 dias'},
+    {f:'Olaria São Bento', un:0.92, n:2000, frete:180, chega:19, cond:'Boleto 14 dias'},
+  ]},
+];
+/* diário de obra (6 dias, 1 com chuva à tarde, 2 com fotos) */
+const FOTO = (t,c) => ({t,c});
+const DIARIOS = [
+  {d:'14/11', dia:'Sábado', status:'revisar', autor:'Carlos', hora:'17:05', clima:['Bom','Bom'], pres:[0,1,2,3,4,5,7,8,9,10,11,12,13,14,15],
+   serv:'Alvenaria do bloco B, eixos 3 a 5, até 1,40 m\nArmação das vigas de cinta do bloco A\nLimpeza do canteiro',
+   ocor:'Faltou areia no fim da tarde. O Areal São José entrega na segunda.',
+   fotos:[FOTO('Alvenaria bloco B — eixo 3','#9C6A50'),FOTO('Alvenaria bloco B — eixo 5','#8B5E46'),FOTO('Vigas de cinta bloco A','#6F6A5E'),FOTO('Canteiro limpo','#A88462')]},
+  {d:'13/11', dia:'Sexta', status:'revisado', autor:'Carlos', hora:'17:12', rev:'Wlisses · 13/11 18:40', clima:['Bom','Nublado'], pres:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+   serv:'Alvenaria do bloco B, eixos 1 a 3\nCorte e dobra do aço das vigas de cinta', ocor:'', fotos:[]},
+  {d:'12/11', dia:'Quinta', status:'revisado', autor:'Carlos', hora:'17:30', rev:'Wlisses · 12/11 19:02 · 1 correção', clima:['Bom','Bom'], pres:[0,1,2,3,4,5,6,7,8,10,11,12,13,14,15],
+   serv:'Concretagem dos pilares P7 a P12 (bloco A) — 4,2 m³\nDesforma dos pilares P1 a P6', ocor:'Concreto usinado chegou 40 min atrasado.',
+   fotos:[FOTO('Concretagem P7–P12','#7D6C5C'),FOTO('Caminhão betoneira','#8E7158'),FOTO('Desforma P1–P6','#A57B5B')]},
+  {d:'11/11', dia:'Quarta', status:'revisado', autor:'Carlos', hora:'17:01', rev:'Wlisses · 11/11 20:15', clima:['Bom','Chuva'], pres:[0,1,2,3,4,5,7,8,9,10,11,12,13,15],
+   serv:'Formas dos pilares P7 a P12\nServiço parado das 14h às 16h por chuva', ocor:'Chuva forte à tarde. Lona sobre o aço estocado.', fotos:[]},
+  {d:'10/11', dia:'Terça', status:'revisado', autor:'Carlos', hora:'16:55', rev:'Wlisses · 10/11 18:30', clima:['Bom','Bom'], pres:[0,1,2,3,4,5,6,7,8,9,10,11,12,13,14,15],
+   serv:'Marcação da alvenaria do bloco B\nRecebimento de 50 sacos de cimento (Casa do Construtor)', ocor:'', fotos:[]},
+  {d:'09/11', dia:'Segunda', status:'revisado', autor:'Carlos', hora:'17:20', rev:'Wlisses · 09/11 21:05', clima:['Nublado','Bom'], pres:[0,1,2,3,4,5,6,7,8,9,10,11,12,14,15],
+   serv:'Impermeabilização das vigas baldrame do bloco B', ocor:'', fotos:[]},
+];
+/* fluxo de caixa da obra */
+const FLUXO = [
+  {m:'Set', in:0, out:12800},{m:'Out', in:0, out:27300},{m:'Nov', in:142000, out:15840},
+  {m:'Dez', in:0, out:52190, prev:true},{m:'Jan', in:96400, out:34000, prev:true},
+];
+
+/* ======================== ESTADO ======================== */
+const S = { perfil:'eng', tela:'obras', aba:'resumo', filtro:'Em andamento', filtroObra:'Todas',
+  pres:FUNC.map(()=>null), colSeg:'presenca', folhaSeg:'mo', folhaPaga:false, dia:null, draft:null, planilha:null };
+
+/* ======================== NAVEGAÇÃO ======================== */
+const NAV_ENG = [['obras','Obras','obras'],['compras','Compras','compras'],['notas','Notas','notas'],['forn','Fornecedores','forn'],['mais','Mais','mais']];
+const NAV_MES = [['m-pres','Presença','colab'],['m-diario','Diário','diario'],['mais','Perfil','user']];
+function ativoNav(){
+  if(S.perfil==='mes') return S.aba==='diario' ? 'm-diario' : 'm-pres';
+  return S.tela==='obra' ? 'obras' : S.tela;
+}
+function drawNav(){
+  const nav = S.perfil==='eng' ? NAV_ENG : NAV_MES, a = ativoNav();
+  const b = (k,l,i) => `<button class="${a===k?'on':''}" onclick="go('${k}')">${ic(i)}<span>${l}</span>${k==='notas'?`<span class="badge">${PEND.length}</span>`:''}</button>`;
+  document.getElementById('sidenav').innerHTML = nav.map(n=>b(...n)).join('');
+  document.getElementById('bnav').innerHTML = nav.map(n=>b(n[0], n[0]==='forn'?'Fornec.':n[1], n[2])).join('');
+  document.getElementById('whosw').innerHTML = swPerfil();
+}
+function swPerfil(){
+  return `<button class="${S.perfil==='eng'?'on':''}" onclick="setPerfil('eng')">Engenheiro</button><button class="${S.perfil==='mes'?'on':''}" onclick="setPerfil('mes')">Mestre</button>`;
+}
+function setPerfil(p){
+  S.perfil=p; S.dia=null; closeSheet();
+  if(p==='mes'){ S.tela='obra'; S.aba='colab'; S.colSeg='presenca'; } else { S.tela='obras'; S.aba='resumo'; }
+  render(); window.scrollTo(0,0);
+}
+function go(t, aba){
+  if(t==='m-pres'){ t='obra'; aba='colab'; S.colSeg='presenca'; }
+  if(t==='m-diario'){ t='obra'; aba='diario'; }
+  if(t==='mais'){ abrirMais(); return; }
+  if(['compras','forn'].includes(t)){ toast('Essa tela fica para a próxima rodada do preview.'); return; }
+  if(aba==='presenca'){ aba='colab'; S.colSeg='presenca'; }
+  S.tela = t; if(aba){ S.aba = aba; S.dia=null; }
+  render(); window.scrollTo(0,0);
+}
+function render(){
+  drawNav();
+  const m = document.getElementById('main');
+  m.innerHTML = S.tela==='obras' ? telaObras() : S.tela==='notas' ? telaNotas() : telaObra();
+  const t = m.querySelector('.tabs button.on'); if(t) t.parentNode.scrollLeft = t.offsetLeft - 40;
+}
+function abrirMais(){
+  sheet(`<div class="lab">${S.perfil==='eng'?'Mais':'Perfil'}</div><h3>${S.perfil==='eng'?'Wlisses · Engenheiro':'Carlos · Mestre de obras'}</h3>
+    <p class="muted" style="margin:10px 0 8px">Ver o preview como:</p>
+    <div class="seg big" style="margin-bottom:16px">${swPerfil()}</div>
+    <button class="btn sec full" onclick="closeSheet()">Fechar</button>`);
+}
+
+/* ======================== TELA: OBRAS ======================== */
+function nivel(o){
+  if(o.status==='Concluída') return 'ne';
+  if(o.status==='Paralisada') return 'at';
+  if(!o.presenca || o.nfAtrasada) return 'cr';
+  return 'ok';
+}
+function diariosRevisar(){ return DIARIOS.filter(d=>d.status==='revisar').length; }
+function telaObras(){
+  const ativas = OBRAS.filter(o=>o.status==='Em andamento');
+  const semPres = ativas.filter(o=>!o.presenca).length;
+  const totPagar = ativas.reduce((s,o)=>s+o.aPagar,0);
+  const ord = {cr:0,at:1,ok:2,ne:3};
+  const lista = OBRAS.filter(o=>S.filtro==='Todas'||o.status===S.filtro).sort((a,b)=>ord[nivel(a)]-ord[nivel(b)]);
+  const cnt = (s)=> s==='Todas'?OBRAS.length:OBRAS.filter(o=>o.status===s).length;
+  const dr = diariosRevisar();
+  return `
+  <header class="hd"><div class="hd-in">
+    <div class="date">${HOJE} · 10:42</div>
+    <div class="hd-row">
+      <div><h1>Obras</h1><div class="sub">Bom dia, Wlisses · ${ativas.length} em andamento</div></div>
+      <button class="btn pri push" onclick="toast('Abriria o formulário de nova obra.')">${ic('plus')}Nova obra</button>
+    </div>
+    <div class="tabs"><button class="on">Cartões</button><button onclick="toast('A tabela Gastos fica para a próxima rodada.')">Gastos</button></div>
+  </div></header>
+  <div class="ct">
+    <div class="kpis">
+      <div class="card kpi ${semPres?'cr':'ok'}"><div class="lab">Presença hoje</div>
+        <span class="n">${ativas.length-semPres}<small style="color:var(--apagado)"> /${ativas.length}</small></span>
+        <div class="d">${semPres?semPres+' obra sem presença':'todas lançadas'}</div></div>
+      <button class="card kpi cr" onclick="go('notas')"><div class="lab">Aguardando NF</div>
+        <span class="n">${PEND.length}</span><div class="d">2 há mais de 7 dias</div></button>
+      <div class="card kpi t"><div class="lab">A pagar em aberto</div>
+        <span class="n"><small>R$</small>${mil(totPagar)}</span><div class="d">${ativas.length} obras</div></div>
+      <button class="card kpi ${dr?'at':'ok'}" onclick="go('obra','diario')"><div class="lab">Diários</div>
+        <span class="n">${dr}</span><div class="d">${dr?'para você revisar':'todos revisados'}</div></button>
+    </div>
+    <div class="alerts">
+      ${semPres?`<button class="alert cr" onclick="go('obra','presenca')">${ic('warn')}<span>Presença não lançada: Escola Vila Nova</span><span class="go">LANÇAR ›</span></button>`:''}
+      ${dr?`<button class="alert at" onclick="go('obra','diario')">${ic('diario')}<span>Carlos enviou ${dr} diário${dr>1?'s':''} para revisar<small>Escola Vila Nova</small></span><span class="go">REVISAR ›</span></button>`:''}
+      <button class="alert at" onclick="go('obra','folha')">${ic('folha')}<span>Folha da 1ª quinzena de novembro gerada<small>Mão de obra e fornecedores · conferir e pagar</small></span><span class="go">ABRIR ›</span></button>
+    </div>
+    <div class="seg">
+      ${['Em andamento','Paralisada','Concluída','Todas'].map(s=>`<button class="${S.filtro===s?'on':''}" onclick="S.filtro='${s}';render()">${s}<span class="c">${cnt(s)}</span></button>`).join('')}
+    </div>
+    <div class="obras">${lista.map(cardObra).join('')}</div>
+  </div>`;
+}
+function cardObra(o){
+  const st = {'Em andamento':'ok','Paralisada':'at','Concluída':'ne'}[o.status];
+  const enc = o.status!=='Em andamento';
+  return `
+  <button class="card obra ${nivel(o)}" onclick="${o.id==='vn'?"go('obra','resumo')":"toast('No preview, só a Escola Vila Nova abre por dentro.')"}">
+    <div class="top"><div><div class="nm">${o.nome}</div><div class="og">${o.tipo} · ${o.orgao}</div></div><span class="tag ${st}">${o.status}</span></div>
+    <div class="stats">
+      <div><div class="lab">Sem NF</div><b class="${o.nfAtrasada?'cr':''}">${o.semNF}</b>
+        <div class="s ${o.nfAtrasada?'cr':''}">${o.nfAtrasada?o.nfAtrasada+' há +7 dias':o.semNF?'no prazo':'nenhuma'}</div></div>
+      <div><div class="lab">A pagar</div><b><small>R$</small> ${o.aPagar?mil(o.aPagar):'0'}</b><div class="s">em aberto</div></div>
+      <div><div class="lab">Presença</div>
+        ${enc?`<b>—</b><div class="s">sem equipe</div>`:
+          o.presenca?`<b class="ok">${ic('check','width:26px;height:26px;stroke-width:2.6')}</b><div class="s ok">lançada ${o.presenca}</div>`:
+          `<b class="cr">!</b><div class="s cr">não lançada</div>`}
+      </div>
+    </div>
+  </button>`;
+}
+
+/* ======================== DENTRO DA OBRA (a "pasta") ======================== */
+const ABAS_ENG = [
+  ['resumo','Resumo'],['dados','Dados da obra'],['colab','Colaboradores'],['diario','Diário'],['orcamento','Orçamento'],
+  ['cotacoes','Cotações'],['folha','Folha de pagamento'],['fluxo','Fluxo de caixa'],'|',
+  ['compras','Lista de compras'],['forn','Fornecedores'],['notas','Notas'],['pagamentos','Pagamentos'],['medicao','Medição'],['equipe','Acessos']];
+const ABAS_MES = [['colab','Presença'],['diario','Diário de obra']];
+function telaObra(){
+  const o = OBRAS[0], eng = S.perfil==='eng';
+  const abas = eng ? ABAS_ENG : ABAS_MES;
+  const corpo = {resumo:abaResumo, dados:abaDados, colab:abaColab, diario:abaDiario, orcamento:abaOrcamento, cotacoes:abaCotacoes,
+    folha:abaFolha, fluxo:abaFluxo, pagamentos:abaPagamentos, notas:()=>{S.filtroObra='Escola Vila Nova';return telaNotasCorpo();}}[S.aba] || abaFora;
+  const dr = diariosRevisar();
+  return `
+  <header class="hd"><div class="hd-in">
+    ${eng?'':`<div class="date">${HOJE} · Olá, Carlos</div>`}
+    <div class="hd-row">
+      ${eng?`<button class="back" onclick="go('obras')" aria-label="Voltar para Obras">${ic('back')}</button>`:''}
+      <div style="min-width:0"><h1>${o.nome}</h1><div class="sub">${o.tipo} · ${o.orgao}${eng?' · Contrato 045/2026':''}</div></div>
+      <span class="tag ok push" style="flex:none">${o.status}</span>
+    </div>
+    <div class="tabs">${abas.map(a=>a==='|'?'<span class="sep"></span>':
+      `<button class="${S.aba===a[0]?'on':''}" onclick="go('obra','${a[0]}')">${a[1]}${a[0]==='diario'&&dr&&eng?`<span class="dot">${dr}</span>`:''}</button>`).join('')}</div>
+  </div></header>
+  <div class="ct">${corpo()}</div>`;
+}
+function abaFora(){
+  const nome = ABAS_ENG.find(a=>a[0]===S.aba)[1];
+  return `<div class="card soon"><b>${nome}</b>Esta aba já existe no PRD e não muda de jeito; fica de fora deste preview para ele não ficar pesado.</div>`;
+}
+
+/* ---------- Resumo ---------- */
+function abaResumo(){
+  const pres = OBRAS[0].presenca, dr = diariosRevisar();
+  const cat = [['Mão de obra',29040,'Empreiteiros R$ 13.200,00 · Diárias R$ 15.840,00'],['Material',6750],['Aluguel de equipamento',600],['Serviço',0],['Outros',0]];
+  const max = cat[0][1];
+  const MODS = [
+    ['dados','Dados da obra','dados','Contrato 045/2026 · 25% do prazo',''],
+    ['colab','Colaboradores','colab', pres?'Presença lançada '+pres:'Presença de hoje não lançada', pres?'ok':'cr'],
+    ['diario','Diário de obra','diario', dr?dr+' dia para revisar':'Tudo revisado', dr?'at':'ok'],
+    ['orcamento','Orçamento','orc','Planilha da licitação · R$ 1,25 mi',''],
+    ['cotacoes','Cotações','cot',`${COT.length} abertas · economia ${brl(COT.map(analisar).reduce((s,a)=>s+a.eco,0))}`,'ok'],
+    ['folha','Folha de pagamento','folha','1ª quinz. nov gerada · conferir','at'],
+    ['fluxo','Fluxo de caixa','fluxo','Saldo R$ 86,1 mil','ok'],
+    ['notas','Notas fiscais','notas','4 sem NF · 2 atrasadas','cr'],
+  ];
+  return `
+  ${pres?'':`<button class="alert cr" onclick="go('obra','presenca')">${ic('warn')}<span>Presença de hoje não lançada (16 colaboradores)</span><span class="go">LANÇAR ›</span></button>`}
+  <div class="kpis">
+    <div class="card kpi t"><div class="lab">Comprado · 1ª quinz.</div><span class="n"><small>R$</small>${mil(20550)}</span><div class="d">01 a 15/11</div></div>
+    <button class="card kpi cr" onclick="go('obra','notas')"><div class="lab">Aguardando NF</div><span class="n">4</span><div class="d">R$ 19.950 · 2 atrasadas</div></button>
+    <button class="card kpi at" onclick="go('obra','folha')"><div class="lab">Folha a pagar</div><span class="n"><small>R$</small>${mil(15640+20550)}</span><div class="d">1ª quinzena nov.</div></button>
+    <button class="card kpi ok" onclick="go('obra','fluxo')"><div class="lab">Saldo da obra</div><span class="n g"><small>R$</small>${mil(86060)}</span><div class="d">no caixa hoje</div></button>
+  </div>
+
+  <div class="sec-h"><span class="lab">Módulos da obra</span></div>
+  <div class="mods">${MODS.map(([k,n,i,s,c])=>`<button class="card mod ${c}" onclick="go('obra','${k}')"><span class="mi">${ic(i)}</span><b>${n}</b><span>${s}</span></button>`).join('')}</div>
+
+  <div class="grid2">
+    <div class="col">
+      <div class="card pad">
+        <div class="lab">Gasto por categoria · desde o início</div>
+        <div class="bars">${cat.map(([n,v,sub])=>`
+          <div class="bar"><div class="l"><span>${n}</span><b>${v?brl(v):'—'}</b></div>
+          <div class="tr"><i style="width:${v/max*100}%"></i></div>${sub?`<div class="sub">${sub}</div>`:''}</div>`).join('')}</div>
+      </div>
+      <div class="card pad">
+        <div class="sec-h"><span class="lab">Medição · contrato</span><span class="tag at">2ª em rascunho</span></div>
+        <div style="display:flex;align-items:baseline;gap:10px;margin-top:8px"><span class="big">11,4%</span><span class="muted">medido · prazo já em 25%</span></div>
+        <div class="prog"><i style="width:11.4%"></i></div>
+        <div style="display:flex;justify-content:space-between;gap:10px;font-size:14px;flex-wrap:wrap">
+          <span><span class="lab">Medido</span><br><b>R$ 142.000,00</b></span>
+          <span style="text-align:right"><span class="lab">Saldo</span><br><b>R$ 1.106.300,00</b></span>
+        </div>
+      </div>
+    </div>
+    <div class="col">
+      <div class="card list">
+        <div class="list-h"><span class="lab">Aguardando NF nesta obra</span><button class="btn wa sm" style="margin-left:auto" onclick="S.filtroObra='Escola Vila Nova';go('notas')">${ic('wa')}Cobrar</button></div>
+        ${PEND.filter(p=>p.obra==='Escola Vila Nova').sort((a,b)=>b.dias-a.dias).map(p=>rowPend(p,false)).join('')}
+      </div>
+      <div class="card list">
+        <div class="list-h"><span class="lab">Últimas atividades</span></div>
+        ${[['Folha da 1ª quinzena de nov. gerada','hoje · 06:00 · automático'],['Carlos enviou o diário de 14/11 com 4 fotos','14/11 · 17:05'],['Ana lançou compra Zé Pedreiro R$ 7.200,00','14/11 · 16:22'],['Carlos lançou presença (15 de 16)','14/11 · 07:38'],['Prefeitura pagou a 1ª medição R$ 142.000,00','12/11 · 14:10']]
+          .map(([t,m])=>`<div class="row" style="min-height:56px"><div class="tx"><div class="tt" style="font-weight:500">${t}</div><div class="mt">${m}</div></div></div>`).join('')}
+      </div>
+    </div>
+  </div>`;
+}
+function rowPend(p, mostraObra){
+  const n = p.dias>7?'cr':p.dias>=5?'at':'ne';
+  return `<div class="row ${n==='cr'?'cr':''}"><div class="tx"><div class="tt">${p.desc}</div><div class="mt">${p.data} · ${mostraObra?p.obra:p.forn}</div></div>
+    <div class="val">${brl(p.valor)}<br><span class="tag ${n}">há ${p.dias} dias</span></div></div>`;
+}
+
+/* ---------- 1. Dados da obra ---------- */
+function abaDados(){
+  const D = [
+    ['Nome da obra','Escola Municipal Vila Nova'],['Tipo','Escola'],
+    ['Órgão contratante','Prefeitura de Caruaru — Secretaria de Educação'],['Nº do contrato','045/2026'],
+    ['Licitação','Tomada de Preços 012/2026'],['Valor do contrato','R$ 1.248.300,00'],
+    ['Endereço','Rua Projetada 3, s/n — Vila Nova, Caruaru/PE'],['Ordem de serviço','01/09/2026'],
+    ['Prazo','300 dias · término 28/06/2027'],['Fiscal da prefeitura','Eng. Marcos Lira · (81) 99733-1020'],
+    ['ART de execução','PE20260918453'],['Mestre de obras','Carlos Henrique'],
+  ];
+  return `
+  <div class="kpis k3">
+    <div class="card kpi t"><div class="lab">Prazo decorrido</div><span class="n">25%</span><div class="d">76 de 300 dias</div></div>
+    <div class="card kpi at"><div class="lab">Medido</div><span class="n">11,4%</span><div class="d">atrás do prazo</div></div>
+    <div class="card kpi"><div class="lab">Faltam</div><span class="n">224<small style="margin-left:4px">dias</small></span><div class="d">até 28/06/2027</div></div>
+  </div>
+  <div class="card pad">
+    <div class="sec-h"><span class="lab">Prazo × medição</span><span class="tag at">Medição 13,6 pontos atrás</span></div>
+    <div style="margin-top:10px"><div class="bar"><div class="l"><span>Prazo decorrido</span><b>25,3%</b></div><div class="prog" style="margin:5px 0 12px"><i style="width:25.3%;background:var(--cafe)"></i></div></div>
+    <div class="bar"><div class="l"><span>Medido (aprovado)</span><b>11,4%</b></div><div class="prog at" style="margin:5px 0 0"><i style="width:11.4%"></i></div></div></div>
+  </div>
+  <div class="card">
+    <div class="list-h"><span class="lab">Dados do contrato</span><button class="btn sec sm" style="margin-left:auto" onclick="toast('Abriria o formulário de obra.')">${ic('edit')}Editar</button></div>
+    <div class="dl">${D.map(([k,v])=>`<div><span class="lab">${k}</span><b>${v}</b></div>`).join('')}</div>
+  </div>`;
+}
+
+/* ---------- 2. Colaboradores (presença + cadastro) ---------- */
+function abaColab(){
+  const eng = S.perfil==='eng';
+  return `${eng?`<div class="seg big"><button class="${S.colSeg==='presenca'?'on':''}" onclick="S.colSeg='presenca';render()">Presença de hoje</button><button class="${S.colSeg==='equipe'?'on':''}" onclick="S.colSeg='equipe';render()">Equipe<span class="c">${FUNC.length}</span></button></div>`:''}
+  ${S.colSeg==='equipe'&&eng ? colabEquipe() : colabPresenca()}`;
+}
+function colabPresenca(){
+  const marcados = S.pres.filter(Boolean).length, presentes = S.pres.filter(x=>x==='P').length;
+  const lancada = OBRAS[0].presenca, eng = S.perfil==='eng';
+  const OP = [['P','Presente'],['F','Falta'],['A','Atestado'],['FG','Folga']];
+  return `
+  ${lancada?`<div class="alert ok">${ic('check')}<span>Presença de hoje lançada por ${eng?'Wlisses':'Carlos'} às ${lancada}</span></div>`:''}
+  <div class="card pad pres-top">
+    <div><div class="lab">${HOJE}</div>
+      <div class="counter" style="margin-top:6px"><b>${presentes}</b><span>presentes de ${FUNC.length}${marcados<FUNC.length?` · <b style="font-size:16px;color:var(--cr)">${FUNC.length-marcados} sem marcar</b>`:''}</span></div></div>
+    <div class="btns" style="margin-left:auto">
+      <button class="btn sec" onclick="S.pres=[...ONTEM];render()">${ic('repeat')}Repetir ontem</button>
+      ${eng?`<button class="btn esc" onclick="S.folhaSeg='mo';go('obra','folha')">${ic('folha')}Folha</button>`:''}
+    </div>
+  </div>
+  <div class="card">${FUNC.map(([nome,fn,v],i)=>`
+    <div class="emp"><div class="who"><b>${nome}</b><span>${fn}</span>${v==='E'?'<span class="tag ne plain">Empreiteiro</span>':''}</div>
+    <div class="opts">${OP.map(([k,l])=>`<button class="${S.pres[i]===k?'on '+k:''}" onclick="S.pres[${i}]='${k}';render()">${l}</button>`).join('')}</div></div>`).join('')}
+  </div>
+  <div class="sticky-save"><button class="btn pri full" style="min-height:56px;font-size:17px" onclick="salvarPres()">${ic('check')}Salvar presença · ${marcados} de ${FUNC.length}</button></div>`;
+}
+function salvarPres(){
+  const falta = S.pres.filter(x=>!x).length;
+  if(falta){ toast(`Faltam ${falta} colaboradores. Marque todos antes de salvar.`); return; }
+  OBRAS[0].presenca='10:42'; toast('Salvo.'); render(); window.scrollTo(0,0);
+}
+function colabEquipe(){
+  const diar = FUNC.filter(f=>f[2]==='D').length;
+  return `
+  <div class="kpis k3">
+    <div class="card kpi t"><div class="lab">Colaboradores</div><span class="n">${FUNC.length}</span><div class="d">ativos nesta obra</div></div>
+    <div class="card kpi"><div class="lab">Diaristas</div><span class="n">${diar}</span><div class="d">entram na folha</div></div>
+    <div class="card kpi"><div class="lab">Do empreiteiro</div><span class="n">${FUNC.length-diar}</span><div class="d">Zé Pedreiro Empreitadas</div></div>
+  </div>
+  <div class="card">
+    <div class="list-h"><span class="lab">Equipe da obra</span><button class="btn pri sm" style="margin-left:auto" onclick="toast('Abriria o cadastro rápido: nome, função, vínculo, diária e Pix.')">${ic('plus')}Colaborador</button></div>
+    <table class="tbl stack"><thead><tr><th>Nome</th><th>Vínculo</th><th class="r">Diária</th><th class="r">Dias na quinz.</th><th>Chave Pix</th></tr></thead><tbody>
+    ${FUNC.map(([n,fn,v,d,dias,pix])=>`<tr>
+      <td><b style="font-size:16px">${n}</b><div class="muted" style="font-size:14px">${fn}</div></td>
+      <td class="r" style="text-align:left">${v==='D'?'<span class="tag t ok plain">Diarista</span>':'<span class="tag ne plain">Empreiteiro</span>'}</td>
+      <td class="r"><b>${d?brl(d):'—'}</b></td>
+      <td class="r hide-m">${dias??'—'}</td>
+      <td class="mono hide-m" style="font-size:13px">${pix||'—'}</td></tr>`).join('')}
+    </tbody></table>
+  </div>`;
+}
+
+/* ---------- 4. Diário de obra (mestre lança, engenheiro corrige) ---------- */
+function abaDiario(){ return S.dia===null ? diarioLista() : diarioDia(); }
+function diarioLista(){
+  const eng = S.perfil==='eng', dr = diariosRevisar();
+  const temHoje = DIARIOS[0].d==='16/11';
+  const clima = c => c.map(x=>x==='Chuva'?`<b class="cr-tx">${x}</b>`:x).join(' / ');
+  return `
+  ${!eng && !temHoje ? `<button class="alert at" onclick="novoDiario()">${ic('camera')}<span>Diário de hoje ainda não lançado<small>Fotos, quem estava na obra e o que foi feito</small></span><span class="go">LANÇAR ›</span></button>`:''}
+  ${eng && dr ? `<div class="alert at">${ic('diario')}<span>${dr} diário esperando a sua revisão<small>Você pode corrigir qualquer campo antes de aprovar</small></span></div>`:''}
+  <div class="sec-h">
+    <span class="lab">${DIARIOS.length} dias lançados · novembro</span>
+    <div class="btns">${eng?`<button class="btn sec sm" onclick="toast('Abriria a impressão do diário do período.')">${ic('down')}PDF do período</button>`:''}
+    ${!temHoje?`<button class="btn pri sm" onclick="novoDiario()">${ic('plus')}Diário de hoje</button>`:''}</div>
+  </div>
+  <div class="card list">${DIARIOS.map((d,i)=>`
+    <button class="row ${d.status==='revisar'&&eng?'at':''}" onclick="abrirDia(${i})">
+      <div style="text-align:center;min-width:52px"><div style="font-size:24px;font-weight:700;line-height:1">${d.d.slice(0,2)}</div><div class="lab" style="font-size:11px">${d.dia.slice(0,3)}</div></div>
+      <div class="tx"><div class="tt">${d.serv.split('\n')[0]}</div>
+        <div class="mt">${clima(d.clima)} · efetivo ${d.pres.length}${d.fotos.length?` · ${d.fotos.length} fotos`:''}</div></div>
+      <div class="val">${d.status==='revisar'?'<span class="tag at">Para revisar</span>':'<span class="tag ok">Revisado</span>'}</div>
+    </button>`).join('')}
+  </div>`;
+}
+function abrirDia(i){ S.dia=i; S.draft=JSON.parse(JSON.stringify(DIARIOS[i])); render(); window.scrollTo(0,0); }
+function novoDiario(){
+  const pres = S.pres.some(Boolean) ? S.pres.map((x,i)=>x==='P'?i:-1).filter(i=>i>=0) : ONTEM.map((x,i)=>x==='P'?i:-1).filter(i=>i>=0);
+  DIARIOS.unshift({d:'16/11', dia:'Segunda', status:'novo', autor:'Carlos', hora:'', clima:['Bom','Bom'], pres, serv:'', ocor:'', fotos:[]});
+  abrirDia(0);
+}
+function diarioDia(){
+  const d = S.draft, o = DIARIOS[S.dia], eng = S.perfil==='eng', novo = o.status==='novo';
+  const ed = (k) => eng && !novo && d[k]!==o[k] ? 'edited' : '';
+  const W = ['Bom','Nublado','Chuva','Impraticável'];
+  return `
+  <div class="sec-h">
+    <button class="btn sec sm" onclick="${novo?'DIARIOS.shift();':''}S.dia=null;render()">${ic('back')}Voltar</button>
+    ${novo?'<span class="tag ne">Rascunho</span>':o.status==='revisar'?'<span class="tag at">Para revisar</span>':'<span class="tag ok">Revisado</span>'}
+  </div>
+  <div class="card pad">
+    <div class="lab">Diário de obra</div>
+    <div class="big" style="font-size:28px;margin-top:4px">${d.dia}, ${d.d}/2026</div>
+    <div class="stamp" style="margin-top:6px">${novo?'Preenchendo agora · Carlos':`Lançado por ${o.autor} às ${o.hora}`}${o.rev?`<br>Revisado por ${o.rev}`:''}</div>
+  </div>
+
+  <div class="card pad">
+    <div class="sec-h" style="margin-bottom:10px"><span class="lab">Fotos · ${d.fotos.length}</span></div>
+    <div class="photos">
+      ${d.fotos.map(f=>`<div class="ph" style="background:linear-gradient(135deg,${f.c},#3B2A22)">${ic('img')}<span>${f.t}</span></div>`).join('')}
+      <div class="ph add" onclick="addFoto()">${ic('camera')}Tirar foto</div>
+    </div>
+  </div>
+
+  <div class="card pad">
+    <div class="lab" style="margin-bottom:8px">Clima de manhã</div>
+    <div class="wx">${W.map(w=>`<button class="${d.clima[0]===w?'on'+(w!=='Bom'&&w!=='Nublado'?' ch':''):''}" onclick="S.draft.clima[0]='${w}';render()">${w}</button>`).join('')}</div>
+    <div class="lab" style="margin:14px 0 8px">Clima à tarde</div>
+    <div class="wx">${W.map(w=>`<button class="${d.clima[1]===w?'on'+(w!=='Bom'&&w!=='Nublado'?' ch':''):''}" onclick="S.draft.clima[1]='${w}';render()">${w}</button>`).join('')}</div>
+  </div>
+
+  <div class="card pad">
+    <div class="sec-h" style="margin-bottom:10px"><span class="lab">Quem estava na obra · ${d.pres.length} de ${FUNC.length}</span>
+      ${eng && !novo && JSON.stringify(d.pres)!==JSON.stringify(o.pres)?'<span class="tag at plain">corrigido</span>':''}</div>
+    <div class="chips">${FUNC.map((f,i)=>`<button class="chip ${d.pres.includes(i)?'on':''}" onclick="togPres(${i})">${f[0].split(' ')[0]} ${f[0].split(' ').slice(-1)[0][0]}.</button>`).join('')}</div>
+  </div>
+
+  <div class="card pad col">
+    <label class="field"><span class="lab">Serviços executados · um por linha</span>
+      <textarea class="${ed('serv')}" oninput="S.draft.serv=this.value;this.classList.toggle('edited',${eng&&!novo}&&this.value!==DIARIOS[S.dia].serv)" placeholder="Ex.: Alvenaria do bloco B, eixos 3 a 5">${d.serv}</textarea></label>
+    <label class="field"><span class="lab">Ocorrências</span>
+      <textarea style="min-height:84px" class="${ed('ocor')}" oninput="S.draft.ocor=this.value;this.classList.toggle('edited',${eng&&!novo}&&this.value!==DIARIOS[S.dia].ocor)" placeholder="Atrasos, faltas de material, chuva, visita do fiscal…">${d.ocor}</textarea></label>
+    ${eng && !novo ? '<div class="muted" style="font-size:14px">O que você alterar fica marcado em âmbar, e o mestre vê a correção.</div>':''}
+  </div>
+
+  <div class="sticky-save">${eng && !novo
+    ? `<button class="btn okb full" style="min-height:56px;font-size:17px" onclick="aprovarDia()">${ic('check')}${o.status==='revisar'?'Salvar correções e aprovar':'Salvar correções'}</button>`
+    : `<button class="btn pri full" style="min-height:56px;font-size:17px" onclick="enviarDia()">${ic('up')}${novo?'Enviar para o engenheiro':'Salvar'}</button>`}</div>`;
+}
+function addFoto(){
+  const n = S.draft.fotos.length;
+  S.draft.fotos.push({t:`Foto ${n+1} · agora`, c:['#9C6A50','#7D6C5C','#A88462','#8B5E46'][n%4]});
+  render();
+}
+function togPres(i){ const p=S.draft.pres; const k=p.indexOf(i); k<0?p.push(i):p.splice(k,1); p.sort((a,b)=>a-b); render(); }
+function aprovarDia(){
+  const o = DIARIOS[S.dia], d = S.draft;
+  const n = ['serv','ocor'].filter(k=>d[k]!==o[k]).length + (JSON.stringify(d.pres)!==JSON.stringify(o.pres)?1:0) + (d.clima.join()!==o.clima.join()?1:0) + (d.fotos.length!==o.fotos.length?1:0);
+  Object.assign(o, d, {status:'revisado', rev:`Wlisses · hoje 10:42${n?` · ${n} correç${n>1?'ões':'ão'}`:''}`});
+  S.dia=null; toast(n?`Diário aprovado com ${n} correç${n>1?'ões':'ão'}.`:'Diário aprovado.'); render(); window.scrollTo(0,0);
+}
+function enviarDia(){
+  const d = S.draft;
+  if(!d.serv.trim()){ toast('Escreva pelo menos um serviço executado.'); return; }
+  Object.assign(DIARIOS[S.dia], d, {status:'revisar', hora:'10:42'});
+  S.dia=null; toast('Enviado. O engenheiro vai revisar.'); render(); window.scrollTo(0,0);
+}
+
+/* ---------- 3. Orçamento da obra (planilha da licitação) ---------- */
+function abaOrcamento(){
+  const total = ORC.reduce((s,r)=>s+r[2],0), med = ORC.reduce((s,r)=>s+r[3],0);
+  const nome = S.planilha || 'Planilha_Orcamentaria_EMVilaNova_TP012-2026.xlsx';
+  return `
+  <div class="kpis">
+    <div class="card kpi t"><div class="lab">Valor licitado</div><span class="n"><small>R$</small>${mil(total)}</span><div class="d">${brl(total)}</div></div>
+    <div class="card kpi"><div class="lab">BDI</div><span class="n">24,50%</span><div class="d">já incluso nos preços</div></div>
+    <div class="card kpi ok"><div class="lab">Desconto ganho</div><span class="n">8,20%</span><div class="d">sobre o orçamento base</div></div>
+    <div class="card kpi"><div class="lab">Data-base</div><span class="n">01/26</span><div class="d">SINAPI-PE desonerado</div></div>
+  </div>
+  <div class="card">
+    <div class="list-h"><span class="lab">Planilha que ganhou a licitação</span></div>
+    <div class="file">
+      <div class="xl">XLSX</div>
+      <div style="flex:1;min-width:0"><b style="font-size:16px;word-break:break-all">${nome}</b>
+        <div class="stamp">${S.planilha?'Enviada agora por Wlisses':'412 KB · enviada por Wlisses em 02/09/2026'}<br>8 etapas · 143 itens lidos</div></div>
+    </div>
+    <div class="list-f btns">
+      <button class="btn sec sm" onclick="toast('Baixaria a planilha original.')">${ic('down')}Baixar original</button>
+      <label class="btn esc sm" style="cursor:pointer">${ic('up')}Trocar planilha<input type="file" accept=".xlsx,.xls,.csv" hidden onchange="if(this.files[0]){S.planilha=this.files[0].name;render();toast('Planilha anexada.')}"></label>
+    </div>
+  </div>
+  <div class="card">
+    <div class="list-h"><span class="lab">Etapas do orçamento × medido</span></div>
+    <table class="tbl stack"><thead><tr><th>Etapa</th><th class="r">Orçado</th><th class="r">% da obra</th><th style="width:28%">Medido</th></tr></thead><tbody>
+    ${ORC.map(([c,n,v,m])=>`<tr>
+      <td class="full"><b style="font-size:16px">${c}. ${n}</b></td>
+      <td class="r"><b>${brl(v)}</b></td>
+      <td class="r hide-m">${pct(v/total*100)}</td>
+      <td class="r" style="text-align:left"><span style="font-weight:600;${m===v?'color:var(--ok)':''}">${m?pct(m/v*100):'—'}</span><div class="mini" style="width:120px;max-width:100%"><i style="width:${m/v*100}%;${m===v?'background:var(--ok)':''}"></i></div></td>
+    </tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total</td><td class="r">${brl(total)}</td><td class="r hide-m">100%</td><td class="r" style="text-align:left">${pct(med/total*100)} medido</td></tr></tfoot></table>
+  </div>
+  <label class="drop">${ic('up','width:30px;height:30px')}<b style="color:var(--cafe)">Anexar outra planilha (aditivo, reajuste)</b><span>Toque para escolher o arquivo .xlsx ou arraste aqui</span>
+    <input type="file" accept=".xlsx,.xls,.csv" onchange="if(this.files[0])toast('Anexaria '+this.files[0].name+' como aditivo.')"></label>`;
+}
+
+/* ---------- 5. Cotações (o sistema indica a melhor compra) ---------- */
+function analisar(c){
+  const ps = c.props.map(p=>({...p, total:p.un*p.n+p.frete, noPrazo:p.chega<=c.limite}));
+  const ok = ps.filter(p=>p.noPrazo).sort((a,b)=>a.total-b.total);
+  const best = ok[0], barata = [...ps].sort((a,b)=>a.total-b.total)[0];
+  const cara = Math.max(...ps.map(p=>p.total));
+  return {ps:[best, ...ps.filter(p=>p!==best).sort((a,b)=>a.total-b.total)], best, barata, eco:cara-best.total};
+}
+function abaCotacoes(){
+  const an = COT.map(analisar), eco = an.reduce((s,a)=>s+a.eco,0);
+  return `
+  <div class="kpis k3">
+    <div class="card kpi t"><div class="lab">Cotações abertas</div><span class="n">${COT.length}</span><div class="d">${COT.reduce((s,c)=>s+c.props.length,0)} propostas</div></div>
+    <div class="card kpi ok"><div class="lab">Economia</div><span class="n g"><small>R$</small>${mil(eco)}</span><div class="d">contra a proposta mais cara</div></div>
+    <div class="card kpi"><div class="lab">Como escolho</div><span class="n" style="font-size:20px;white-space:normal;line-height:1.25">Menor total com frete, que chega no prazo</span></div>
+  </div>
+  <div class="sec-h"><span class="lab">Escola Vila Nova</span><button class="btn pri sm" onclick="toast('Abriria nova cotação: item, quantidade, prazo e fornecedores.')">${ic('plus')}Nova cotação</button></div>
+  <div class="grid2">
+  ${COT.map((c,ci)=>{ const a=an[ci]; return `
+    <div class="card">
+      <div class="list-h"><div><div class="nm">${c.item}</div><div class="lab" style="margin-top:2px">${c.qtd} · precisa até ${c.para}</div></div><span class="tag at" style="margin-left:auto">${c.status}</span></div>
+      ${a.ps.map(p=>{
+        const isBest = p===a.best, late = !p.noPrazo;
+        const why = isBest ? (a.barata!==p ? `Melhor opção: a mais barata que chega até ${c.para}` : 'Melhor opção: menor preço e chega no prazo')
+                  : late ? `Mais barata, mas chega ${p.chega}/11 — depois do prazo` : `R$ ${(p.total-a.best.total).toLocaleString('pt-BR',{minimumFractionDigits:2})} mais cara`;
+        return `<div class="prop ${isBest?'best':late?'late':''}">
+          <div><div class="pn">${p.f}</div><div class="pd">${brl(p.un)}/un · frete ${p.frete?brl(p.frete):'grátis'} · chega ${p.chega}/11 · ${p.cond}</div></div>
+          <div class="pt">${brl(p.total)}</div>
+          <div class="why">${isBest?'★ ':late?'⚠ ':''}${why}</div></div>`;}).join('')}
+      <div class="list-f btns">
+        <button class="btn okb" style="flex:1" onclick="toast('Geraria a compra com ${a.best.f}: ${brl(a.best.total)}, entra como Aguardando NF.')">${ic('check')}Comprar de ${a.best.f.split(' ')[0]} ${a.best.f.split(' ')[1]||''}</button>
+        <button class="btn wa sm" onclick="toast('Abriria o WhatsApp pedindo preço aos fornecedores.')">${ic('wa')}Pedir preço</button>
+      </div>
+    </div>`;}).join('')}
+  </div>`;
+}
+
+/* ---------- 6. Folha de pagamento (gerada automaticamente) ---------- */
+function abaFolha(){
+  const mo = FUNC.filter(f=>f[2]==='D').map(([n,fn,v,d,dias,pix])=>({n,fn,d,dias,pix,tot:d*dias}));
+  const totMO = mo.reduce((s,x)=>s+x.tot,0);
+  const FORN = [
+    {f:'Zé Pedreiro Empreitadas', comp:17200, nf:0, itens:'Alvenaria 1ª quinz. + reboco bloco B'},
+    {f:'Casa do Construtor Ltda', comp:1850, nf:0, itens:'50 sacos de cimento CP-II'},
+    {f:'Areal São José', comp:900, nf:0, itens:'Areia média 6 m³'},
+    {f:'Loca Máquinas', comp:600, nf:600, itens:'Betoneira 400 L — NF 4521'},
+  ];
+  const totF = FORN.reduce((s,x)=>s+x.comp,0), lib = FORN.reduce((s,x)=>s+x.nf,0);
+  return `
+  <div class="alert ${S.folhaPaga?'ok':'at'}">${ic(S.folhaPaga?'check':'folha')}<span>${S.folhaPaga?'Folha de mão de obra paga hoje às 10:42 por Pix':'Gerada automaticamente hoje às 06:00'}<small>1ª quinzena de novembro · 01 a 15/11/2026 · a partir da presença e das compras</small></span></div>
+  <div class="seg big"><button class="${S.folhaSeg==='mo'?'on':''}" onclick="S.folhaSeg='mo';render()">Mão de obra</button><button class="${S.folhaSeg==='forn'?'on':''}" onclick="S.folhaSeg='forn';render()">Fornecedores</button></div>
+  ${S.folhaSeg==='mo' ? `
+  <div class="kpis k3">
+    <div class="card kpi ${S.folhaPaga?'ok':'t'}"><div class="lab">Total da folha</div><span class="n"><small>R$</small>${mil(totMO)}</span><div class="d">${brl(totMO)}</div></div>
+    <div class="card kpi"><div class="lab">Diaristas</div><span class="n">${mo.length}</span><div class="d">${mo.reduce((s,x)=>s+x.dias,0)} diárias no total</div></div>
+    <div class="card kpi ${S.folhaPaga?'ok':'at'}"><div class="lab">Situação</div><span class="n" style="font-size:26px">${S.folhaPaga?'Paga':'Em aberto'}</span><div class="d">${S.folhaPaga?'16/11 · Pix':'pagar até 20/11'}</div></div>
+  </div>
+  <div class="card">
+    <table class="tbl stack"><thead><tr><th>Colaborador</th><th class="r">Dias</th><th class="r">Diária</th><th class="r">A pagar</th><th>Pix</th></tr></thead><tbody>
+    ${mo.map(x=>`<tr><td><b style="font-size:16px">${x.n}</b><div class="muted" style="font-size:14px">${x.fn} · ${x.dias} dias × ${brl(x.d)}</div></td>
+      <td class="r hide-m">${x.dias}</td><td class="r hide-m">${brl(x.d)}</td><td class="r"><b style="font-size:17px">${brl(x.tot)}</b></td>
+      <td class="hide-m mono" style="font-size:13px">${x.pix}</td></tr>`).join('')}</tbody>
+    <tfoot><tr><td>Total · ${mo.length} diaristas</td><td class="r hide-m"></td><td class="r hide-m"></td><td class="r">${brl(totMO)}</td><td class="hide-m"></td></tr></tfoot></table>
+    <div class="list-f btns">
+      ${S.folhaPaga?'':`<button class="btn okb" style="flex:1" onclick="S.folhaPaga=true;render();toast('Folha marcada como paga.')">${ic('check')}Marcar como paga</button>`}
+      <button class="btn sec" onclick="toast('Abriria a folha para imprimir / salvar PDF.')">${ic('down')}Imprimir / PDF</button>
+    </div>
+  </div>
+  <div class="muted" style="font-size:14px">Os 6 colaboradores do empreiteiro não entram aqui: o custo deles já vem na nota da Zé Pedreiro Empreitadas.</div>`
+  : `
+  <div class="kpis k3">
+    <div class="card kpi t"><div class="lab">Comprado na quinz.</div><span class="n"><small>R$</small>${mil(totF)}</span><div class="d">${FORN.length} fornecedores</div></div>
+    <div class="card kpi ok"><div class="lab">Liberado p/ pagar</div><span class="n g"><small>R$</small>${mil(lib)}</span><div class="d">tem nota fiscal</div></div>
+    <div class="card kpi cr"><div class="lab">Retido sem NF</div><span class="n"><small>R$</small>${mil(totF-lib)}</span><div class="d">só paga com a nota</div></div>
+  </div>
+  <div class="card list">
+    ${FORN.map(x=>`<div class="row ${x.nf?'':''}"><div class="tx"><div class="tt">${x.f}</div><div class="mt">${x.itens}</div></div>
+      <div class="val">${brl(x.comp)}<br>${x.nf?'<span class="tag ok">Liberado</span>':'<span class="tag at">Falta NF</span>'}</div></div>`).join('')}
+    <div class="list-t"><span>Total da quinzena</span><span>${brl(totF)}</span></div>
+    <div class="list-f btns">
+      <button class="btn okb" style="flex:1" onclick="toast('Registraria o pagamento de ${brl(lib)} à Loca Máquinas.')">${ic('pay')}Pagar liberados · ${brl(lib)}</button>
+      <button class="btn wa" onclick="S.filtroObra='Escola Vila Nova';go('notas')">${ic('wa')}Cobrar NFs</button>
+    </div>
+  </div>`}`;
+}
+
+/* ---------- 7. Fluxo de caixa ---------- */
+function abaFluxo(){
+  let acc = 0; const rows = FLUXO.map(f=>{ acc += f.in - f.out; return {...f, saldo:acc}; });
+  const max = Math.max(...FLUXO.map(f=>Math.max(f.in,f.out)));
+  const hoje = rows[2].saldo;
+  const PROX = [
+    ['20/11','Folha mão de obra · 1ª quinz. nov', -15640, 'at'],
+    ['20/11','Loca Máquinas · NF 4521', -600, ''],
+    ['30/11','Fornecedores (quando chegarem as NFs)', -19950, 'cr'],
+    ['05/12','Folha mão de obra · 2ª quinz. nov (estimada)', -16000, ''],
+    ['15/01','2ª medição · Prefeitura de Caruaru (rascunho)', 96400, 'ok'],
+  ];
+  return `
+  <div class="kpis">
+    <div class="card kpi ok"><div class="lab">Saldo hoje</div><span class="n g"><small>R$</small>${mil(hoje)}</span><div class="d">entradas − saídas</div></div>
+    <div class="card kpi"><div class="lab">Recebido</div><span class="n"><small>R$</small>${mil(142000)}</span><div class="d">1ª medição · 12/11</div></div>
+    <div class="card kpi t"><div class="lab">Gasto total</div><span class="n"><small>R$</small>${mil(55940)}</span><div class="d">desde setembro</div></div>
+    <div class="card kpi at"><div class="lab">Sai em 30 dias</div><span class="n"><small>R$</small>${mil(52190)}</span><div class="d">folhas e fornecedores</div></div>
+  </div>
+  <div class="card pad">
+    <div class="sec-h" style="margin-bottom:14px"><span class="lab">Entradas × saídas por mês</span>
+      <div class="legend"><span><i style="background:var(--ok)"></i>Entrou</span><span><i style="background:var(--terracota)"></i>Saiu</span><span><i style="background:#ccc"></i>Previsto</span></div></div>
+    <div class="chart">${rows.map(r=>`<div class="m ${r.prev?'prev':''}"><i class="in" style="height:${r.in/max*100}%" title="Entrou ${brl(r.in)}"></i><i class="out" style="height:${r.out/max*100}%" title="Saiu ${brl(r.out)}"></i></div>`).join('')}</div>
+    <div class="chart-l">${rows.map(r=>`<div><b>${r.m}${r.prev?'*':''}</b><span class="${r.saldo<0?'cr-tx':'ok-tx'}">${r.saldo<0?'−':''}${mil(Math.abs(r.saldo))}</span></div>`).join('')}</div>
+    <div class="muted" style="font-size:13px;margin-top:10px">Embaixo de cada mês: saldo acumulado da obra. * previsto. Setembro e outubro ficaram negativos: a empresa bancou a obra até a 1ª medição.</div>
+  </div>
+  <div class="card list">
+    <div class="list-h"><span class="lab">Próximos lançamentos</span></div>
+    ${PROX.map(([d,t,v,c])=>`<div class="row ${c==='cr'?'cr':''}"><div class="tx"><div class="tt">${t}</div><div class="mt">${d} · ${v>0?'a receber':'a pagar'}</div></div>
+      <div class="val ${v>0?'ok-tx':''}">${v>0?'+ ':'− '}${brl(Math.abs(v))}</div></div>`).join('')}
+    <div class="list-t"><span>Saldo previsto em 15/01</span><span class="ok-tx">${brl(hoje + PROX.reduce((s,p)=>s+p[2],0))}</span></div>
+  </div>`;
+}
+
+/* ---------- Pagamentos: ESTADO VAZIO de exemplo ---------- */
+function abaPagamentos(){
+  return `
+  <div class="card empty">
+    <div class="ic">${ic('pay')}</div>
+    <h2>Nenhum pagamento a fornecedor nesta obra</h2>
+    <p>Quando você pagar um fornecedor, registre aqui com o comprovante. A nota fiscal fica ligada ao pagamento e a folha da quinzena se ajusta sozinha.</p>
+    <button class="btn pri" onclick="toast('Abriria o formulário de pagamento.')">${ic('plus')}Registrar o primeiro pagamento</button>
+  </div>`;
+}
+
+/* ======================== TELA: NOTAS PENDENTES ======================== */
+function telaNotas(){
+  return `
+  <header class="hd"><div class="hd-in">
+    <div class="date">${HOJE}</div>
+    <div class="hd-row"><div><h1>Notas pendentes</h1><div class="sub">Compras sem nota fiscal · todas as obras</div></div></div>
+    <div class="hd-pad"></div>
+  </div></header>
+  <div class="ct">${telaNotasCorpo()}</div>`;
+}
+function telaNotasCorpo(){
+  const obras = ['Todas', ...new Set(PEND.map(p=>p.obra))];
+  const itens = PEND.filter(p=>S.filtroObra==='Todas'||p.obra===S.filtroObra);
+  const grupos = {}; itens.forEach(p=>(grupos[p.forn] ||= []).push(p));
+  const ord = Object.entries(grupos).sort((a,b)=>Math.max(...b[1].map(x=>x.dias))-Math.max(...a[1].map(x=>x.dias)));
+  const total = itens.reduce((s,p)=>s+p.valor,0), atras = itens.filter(p=>p.dias>7).length;
+  return `
+    <div class="kpis">
+      <div class="card kpi ${atras?'cr':'at'}"><div class="lab">Compras sem NF</div><span class="n">${itens.length}</span><div class="d">${atras?atras+' há mais de 7 dias':'todas no prazo'}</div></div>
+      <div class="card kpi t"><div class="lab">Valor sem NF</div><span class="n"><small>R$</small>${mil(total)}</span><div class="d">${ord.length} fornecedores</div></div>
+    </div>
+    ${S.tela==='notas'?`<div class="seg">${obras.map(o=>`<button class="${S.filtroObra===o?'on':''}" onclick="S.filtroObra='${o}';render()">${o}</button>`).join('')}</div>`:''}
+    <div class="grid2">
+    ${ord.map(([f,ps])=>{
+      const t = ps.reduce((s,p)=>s+p.valor,0), pior = Math.max(...ps.map(p=>p.dias)), no = new Set(ps.map(p=>p.obra)).size;
+      return `<div class="card list">
+        <div class="list-h"><div><div class="nm">${f}</div><div class="lab" style="margin-top:2px">${ps.length} ${ps.length>1?'compras':'compra'} · ${no} obra${no>1?'s':''}</div></div>
+          <div class="tot"><b>${brl(t)}</b>${pior>7?'<span class="tag cr">atrasada</span>':pior>=5?'<span class="tag at">atenção</span>':'<span class="tag ok">no prazo</span>'}</div></div>
+        ${ps.sort((a,b)=>b.dias-a.dias).map(p=>rowPend(p,true)).join('')}
+        <div class="list-f" style="display:grid;grid-template-columns:1fr 1fr;gap:8px">
+          <button class="btn wa" onclick="cobrar('${f}')">${ic('wa')}Cobrar NF</button>
+          <button class="btn sec" onclick="toast('Abriria a câmera para anexar a NF.')">${ic('clip')}Anexar NF</button>
+        </div></div>`;}).join('')}
+    </div>`;
+}
+
+/* ======================== FOLHA DE BAIXO / AVISO ======================== */
+function sheet(h){ document.getElementById('sheet').innerHTML=h; document.getElementById('veil').classList.add('on'); }
+function closeSheet(){ document.getElementById('veil').classList.remove('on'); }
+function cobrar(f){
+  const ps = PEND.filter(p=>p.forn===f), porObra = {};
+  ps.forEach(p=>(porObra[p.obra] ||= []).push(p));
+  let msg = `Olá, ${f}! Aqui é o Wlisses, engenheiro das obras.\nEstamos sem a nota fiscal destas compras:\n`;
+  Object.entries(porObra).forEach(([o,l])=>{ msg += `\n${o}\n` + l.map(p=>`• ${p.data} – ${p.desc} – ${brl(p.valor)}`).join('\n') + '\n'; });
+  msg += `\nTotal: ${brl(ps.reduce((s,p)=>s+p.valor,0))}\nPode enviar a NF por aqui? Obrigado!`;
+  sheet(`<div class="lab">Cobrar NF no WhatsApp</div><h3>${f}</h3><div class="msg">${msg}</div>
+    <div class="acts"><button class="btn sec" onclick="closeSheet()">Cancelar</button>
+    <button class="btn pri" onclick="closeSheet();toast('No app de verdade, abre o WhatsApp com essa mensagem.')">${ic('wa')}Abrir WhatsApp</button></div>`);
+}
+let tt;
+function toast(t){ const el=document.getElementById('toast'); el.textContent=t; el.classList.add('on'); clearTimeout(tt); tt=setTimeout(()=>el.classList.remove('on'),2600); }
+
+render();
+</script>
+</body>
+</html>
