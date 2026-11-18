@@ -249,7 +249,7 @@ Resposta curta, em português simples, sem jargão:
 Seção de passagem entre conversas: **substitua inteira** a cada parada, não acumule.
 Histórico vai para `docs/DIARIO.md` e para o Git.
 
-**Supabase ligado (18/11, noite — ainda NÃO foi para o Git):**
+**Supabase ligado (18/11, noite — no GitHub, commit `572afb7`):**
 - Projeto `minha-obra`, 17 tabelas da fase 1 com CHECK, índices, RLS ligada e regra
   provisória aberta (`dev_provisorio`); seed carregado (865 linhas); `USAR_MOCK = false`.
   Mapa e roteiro do passo 10 em `banco-resumo.md`.
@@ -260,8 +260,7 @@ Histórico vai para `docs/DIARIO.md` e para o Git.
   conta gravou `Pendente`; email repetido (em maiúsculas) recusado com aviso.
   Ficaram no banco: essa presença de 18/11 e a conta "Teste do Banco".
 - **Falta:** decidir a ordem da lista de presença (agora vem na ordem do banco, não na
-  do mock); `/code-review` antes de subir (mexeu em `dados.js`, `supabase.js`,
-  `Login.jsx` e migrations).
+  do mock).
 - Atenção: o navegador do engenheiro fora do painel não chegou ao banco nos testes
   de 18/11 (nenhum pedido no registro do Supabase). Causa não descoberta.
 - Revisão de código (18/11) consertada antes de subir: erro de leitura agora diz o
