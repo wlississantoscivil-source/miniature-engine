@@ -259,8 +259,8 @@ Histórico vai para `docs/DIARIO.md` e para o Git.
   Carlos na Escola Vila Nova gravou 16 linhas com `obra_id` e sobreviveu ao F5; criar
   conta gravou `Pendente`; email repetido (em maiúsculas) recusado com aviso.
   Ficaram no banco: essa presença de 18/11 e a conta "Teste do Banco".
-- **Falta:** decidir a ordem da lista de presença (agora vem na ordem do banco, não na
-  do mock).
+- Lista de presença em ordem alfabética (decisão do engenheiro, 18/11; teste em
+  `tests/presenca-ordem.mjs`).
 - Atenção: o navegador do engenheiro fora do painel não chegou ao banco nos testes
   de 18/11 (nenhum pedido no registro do Supabase). Causa não descoberta.
 - Revisão de código (18/11) consertada antes de subir: erro de leitura agora diz o

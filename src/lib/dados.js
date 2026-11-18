@@ -382,6 +382,7 @@ export async function presencaDoDia(perfil, obraId, data) {
   if (!acesso(perfil, obraId).presenca) return falha(SEM_PERMISSAO)
   const funcs = db.funcionarios.filter((f) => f.obra_id === obraId && f.ativo)
     .map((f) => ({ id: f.id, nome: f.nome, funcao: f.funcao, vinculo: f.vinculo }))
+    .sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')) // ordem alfabética (decisão de 18/11/2026)
   const doDia = db.presencas.filter((p) => p.obra_id === obraId && p.data === data)
   const anteriores = db.presencas.filter((p) => p.obra_id === obraId && p.data < data && p.data >= somarDias(data, -10))
   const diaAnterior = anteriores.reduce((m, p) => (p.data > m ? p.data : m), '')
