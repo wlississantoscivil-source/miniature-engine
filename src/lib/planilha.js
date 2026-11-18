@@ -162,6 +162,12 @@ export function lerPlanilha(linhas, colunasForcadas) {
       if (!item) { res.avisos.push({ linha: linhaNum, msg: 'Linha sem número nem código: ignorada.' }); continue }
       if (porNumero.has(item)) { res.erros.push({ linha: linhaNum, msg: `Número de etapa repetido: ${item}.` }); continue }
       const nivel = item.split('.').filter(Boolean).length
+      // O banco guarda etapas de nível 1 a 3 (PRD-BACKEND, etapas_obra).
+      if (nivel > 3) {
+        res.erros.push({ linha: linhaNum, msg: `A etapa ${item} tem ${nivel} níveis; o app aceita até 3 (ex.: 3.1.2).` })
+        etapaAtual = null
+        continue
+      }
       const pai = item.includes('.') ? item.split('.').slice(0, -1).join('.') : null
       const etapa = { numero: item, nome: descricao, nivel, numero_pai: pai, ordem: ++ordem, linha: linhaNum }
       if (pai && !porNumero.has(pai)) res.avisos.push({ linha: linhaNum, msg: `A etapa ${item} não tem a etapa ${pai} acima dela.` })

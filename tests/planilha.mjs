@@ -79,6 +79,16 @@ const ruim = lerPlanilha([
   [' 1 ', _, 'ETAPA REPETIDA', _, _, _, _],
 ])
 conferir_('aponta item antes de etapa, quantidade ruim e etapa repetida', ruim.erros.map((e) => e.linha), [2, 4, 5])
+// Etapa de nível 4 (3.1.2.1): o banco só guarda até 3 níveis. Antes passava e o
+// banco recusava a importação inteira com uma mensagem genérica.
+const fundo = lerPlanilha([
+  ['Item', 'Código', 'Descrição', 'Und', 'Quant.', 'Valor Unit com BDI', 'Total'],
+  [' 1 ', _, 'ETAPA', _, _, _, _],
+  [' 1.1.1.1 ', _, 'NÍVEL 4', _, _, _, _],
+  [' 1.1.1.1.1 ', ' 7 ', 'ITEM DO NÍVEL 4', 'm', 1, 10, 10],
+])
+conferir_('etapa de nível 4 é erro, e o item dela também', fundo.erros.map((e) => e.linha), [3, 4])
+conferir_('etapa de nível 4 não entra', fundo.etapas.map((e) => e.numero), ['1'])
 conferir_('sem cabeçalho dá erro geral', lerPlanilha([['a', 'b']]).ok, false)
 conferir_('número vazio é null, lixo é NaN', [numero(''), Number.isNaN(numero('abc'))], [null, true])
 

@@ -1,11 +1,16 @@
 // CAMADA DE DADOS — a única porta de entrada dos dados.
 // Nenhuma tela lê o mock ou o Supabase direto: tudo passa por estas funções.
-// Hoje lê dos dados de exemplo (USAR_MOCK). Na etapa do Supabase, só o miolo
-// deste arquivo muda; as telas continuam chamando as mesmas funções.
+// No navegador lê do Supabase (USAR_MOCK = false); fora dele (os testes do
+// `npm run check`, que rodam no Node) lê dos dados de exemplo de mockData.js.
+// As contas e as permissões abaixo são as MESMAS nos dois casos: o banco só
+// troca de onde vêm as listas (`db`).
 //
 // Regra de ouro: a permissão é conferida AQUI, não na tela. Quem não tem
 // Financeiro na obra (o mestre, sempre) não recebe nenhum valor em R$.
-import * as mock from './mockData.js'
+// ⚠ Até o passo 10 (login), o banco está aberto (modo desenvolvimento): a
+// carga traz todas as linhas e esta camada é a única tranca. Com a RLS de
+// verdade, cada pessoa só recebe do banco as linhas que pode ver.
+import * as exemplo from './mockData.js'
 import {
   acessoNaObra, calcularDiarias, contarLancamentos, dentro, estadoPresencaHoje, gastosPorCategoria, hoje,
   momentoLocal, nfAtrasada, ordenarObras, plural, quinzenaDe, relatoriosDisponiveis, soma, somarAcessos, somarDias,
@@ -13,57 +18,142 @@ import {
 import { completarCusto, religarEtapas, totaisItens } from './planilha.js'
 import { fluxoMensal, orcadoPorEtapa } from './orcamento.js'
 
-export const USAR_MOCK = true
+export const USAR_MOCK = false
+// import.meta.env só existe dentro do Vite (o app). No Node (testes) fica no mock.
+const COM_BANCO = !USAR_MOCK && !!import.meta.env
 
 const SEM_PERMISSAO = 'Você não tem liberação para isso nesta obra. Fale com o engenheiro.'
+const SEM_CONEXAO = 'Não consegui falar com o banco. Confira a internet e tente de novo.'
 const ok = (data) => Promise.resolve({ data: structuredClone(data), erro: null })
 const falha = (erro) => Promise.resolve({ data: null, erro })
 const porId = (lista, id) => lista.find((x) => x.id === id)
-const nomeDe = (id) => porId(mock.profiles, id)?.nome || '—'
+const nomeDe = (id) => porId(db.profiles, id)?.nome || '—'
 
-// Congela o total das diárias pagas, como o banco faz no momento do pagamento.
-for (const pd of mock.pagamentos_diarias) {
+// ─── Carga do banco ─────────────────────────────────────────────────────────
+// Lê as tabelas inteiras e guarda por 15 s (ou até a próxima gravação).
+// Lê de 1.000 em 1.000: o Supabase corta em 1.000 linhas sem avisar.
+const TABELAS = [
+  'profiles', 'obras', 'membros_obra', 'fornecedores', 'planilhas_obra', 'etapas_obra', 'itens_contrato',
+  'medicoes', 'fechamentos', 'pagamentos', 'notas_fiscais', 'compras', 'itens_lista_compra',
+  'funcionarios', 'presencas', 'diarias_funcionarios', 'pagamentos_diarias',
+]
+// Colunas com fuso (timestamptz): viram o horário local 'AAAA-MM-DDTHH:MM:SS'.
+// Colunas `date` chegam como 'AAAA-MM-DD' e ficam como estão (sem UTC).
+const MOMENTOS = ['created_at', 'updated_at', 'fechado_em', 'importada_em', 'aprovado_em']
+const VALIDADE_MS = 15000
+
+let db = COM_BANCO ? Object.fromEntries(TABELAS.map((t) => [t, []])) : exemplo
+let carga = null
+let conexao = null
+
+async function banco() {
+  if (!conexao) conexao = (await import('./supabase.js')).supabase
+  return conexao
+}
+
+async function lerTabela(supabase, tabela) {
+  const linhas = []
+  for (let de = 0; ; de += 1000) {
+    const { data, error } = await supabase.from(tabela).select('*').order('id').range(de, de + 999)
+    if (error) throw Object.assign(error, { tabela })
+    linhas.push(...data)
+    if (data.length < 1000) break
+  }
+  for (const l of linhas) for (const c of MOMENTOS) if (l[c]) l[c] = momentoLocal(new Date(l[c]))
+  return linhas
+}
+
+async function carregar() {
+  const supabase = await banco()
+  const listas = await Promise.all(TABELAS.map((t) => lerTabela(supabase, t)))
+  return Object.fromEntries(TABELAS.map((t, k) => [t, listas[k]]))
+}
+
+// Garante `db` atualizado. Devolve null, ou o { erro } para a tela mostrar.
+async function pronto() {
+  if (!COM_BANCO) return null
+  if (!carga || Date.now() - carga.quando > VALIDADE_MS) carga = { quando: Date.now(), promessa: carregar() }
+  try {
+    db = await carga.promessa
+    return null
+  } catch (e) {
+    carga = null
+    // Sem código = a rede caiu. Com código = o banco recusou (ex.: 42501, GRANT faltando).
+    return { data: null, erro: erroDoBanco(e, `leitura do banco${e.tabela ? ` (${e.tabela})` : ''}`) }
+  }
+}
+const esquecerCarga = () => { carga = null }
+
+// Erro do Supabase → frase para a tela (nunca recusa calada).
+function erroDoBanco(error, contexto) {
+  console.error(`Minha Obra — ${contexto}:`, error)
+  if (!error.code) return SEM_CONEXAO
+  if (error.code === '23505') return 'Isso já existe (registro repetido).'
+  if (error.code === '23514') return 'O banco recusou um valor fora da lista permitida.'
+  if (error.code === '42501') return 'O banco recusou: sem liberação para esta tabela.'
+  return error.message || 'O banco recusou o pedido.'
+}
+
+// Congela o total das diárias pagas do mock, como o banco faz no momento do pagamento.
+for (const pd of exemplo.pagamentos_diarias) {
   if (pd.valor_total == null) {
     const linhas = calcularDiarias({
-      funcionarios: mock.funcionarios.filter((f) => f.obra_id === pd.obra_id),
-      presencas: mock.presencas, diarias: mock.diarias_funcionarios,
+      funcionarios: exemplo.funcionarios.filter((f) => f.obra_id === pd.obra_id),
+      presencas: exemplo.presencas, diarias: exemplo.diarias_funcionarios,
       periodo: { inicio: pd.quinzena_inicio, fim: pd.quinzena_fim },
     })
     pd.valor_total = soma(linhas, 'a_pagar')
   }
 }
 
-const acesso = (perfil, obraId) => acessoNaObra(perfil, mock.membros_obra, obraId)
-const obrasVisiveis = (perfil) => mock.obras.filter((o) => acesso(perfil, o.id).ver)
-const obrasComFinanceiro = (perfil) => mock.obras.filter((o) => acesso(perfil, o.id).financeiro)
-const presencaLancadaEm = (obraId, data) => mock.presencas.some((p) => p.obra_id === obraId && p.data === data)
+const acesso = (perfil, obraId) => acessoNaObra(perfil, db.membros_obra, obraId)
+const obrasVisiveis = (perfil) => db.obras.filter((o) => acesso(perfil, o.id).ver)
+const obrasComFinanceiro = (perfil) => db.obras.filter((o) => acesso(perfil, o.id).financeiro)
+const presencaLancadaEm = (obraId, data) => db.presencas.some((p) => p.obra_id === obraId && p.data === data)
 
 function valorDiariasNoPeriodo(obraId, periodo) {
   const linhas = calcularDiarias({
-    funcionarios: mock.funcionarios.filter((f) => f.obra_id === obraId),
-    presencas: mock.presencas.filter((p) => p.obra_id === obraId),
-    diarias: mock.diarias_funcionarios, periodo,
+    funcionarios: db.funcionarios.filter((f) => f.obra_id === obraId),
+    presencas: db.presencas.filter((p) => p.obra_id === obraId),
+    diarias: db.diarias_funcionarios, periodo,
   })
   return soma(linhas, 'a_pagar')
 }
 
-// ─── Sessão de exemplo (troca pelo login do Supabase depois) ────────────────
-export const listarPerfisDeExemplo = () => ok(mock.profiles)
+// ─── Sessão de exemplo (troca pelo login do Supabase no passo 10) ───────────
+export async function listarPerfisDeExemplo() {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  return ok(db.profiles)
+}
 
-export function entrar(email) {
-  const p = mock.profiles.find((x) => x.email.toLowerCase() === String(email).trim().toLowerCase())
+export async function entrar(email) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  const p = db.profiles.find((x) => x.email.toLowerCase() === String(email).trim().toLowerCase())
   return p ? ok(p) : falha('Email ou senha incorretos.')
 }
 
-export function criarConta({ nome, email, whatsapp }) {
-  if (mock.profiles.some((x) => x.email.toLowerCase() === email.toLowerCase())) return falha('Já existe uma conta com este email.')
-  const p = { id: `u-${Date.now()}`, nome, email, whatsapp: whatsapp || '', role: 'Pendente', ativo: true }
-  mock.profiles.push(p)
+export async function criarConta({ nome, email, whatsapp }) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  if (db.profiles.some((x) => x.email.toLowerCase() === email.toLowerCase())) return falha('Já existe uma conta com este email.')
+  const p = { nome, email, whatsapp: whatsapp || '', role: 'Pendente', ativo: true }
+  if (COM_BANCO) {
+    const { data, error } = await (await banco()).from('profiles').insert(p).select().single()
+    if (error) return falha(error.code === '23505' ? 'Já existe uma conta com este email.' : erroDoBanco(error, 'criar conta'))
+    esquecerCarga()
+    return ok(data)
+  }
+  p.id = `u-${Date.now()}`
+  db.profiles.push(p)
   return ok(p)
 }
 
 // ─── Obras ──────────────────────────────────────────────────────────────────
-export function listarObrasPainel(perfil, agora = new Date()) {
+export async function listarObrasPainel(perfil, agora = new Date()) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   const dia = hoje()
   const lista = obrasVisiveis(perfil).map((o) => {
     const a = acesso(perfil, o.id)
@@ -72,12 +162,12 @@ export function listarObrasPainel(perfil, agora = new Date()) {
     const linha = { ...o, acesso: a, presenca_hoje: presenca }
     let pendente = presenca === 'atrasada'
     if (a.financeiro) {
-      const compras = mock.compras.filter((c) => c.obra_id === o.id)
+      const compras = db.compras.filter((c) => c.obra_id === o.id)
       const aguardando = compras.filter((c) => c.status === 'Aguardando NF')
       linha.aguardando_nf = contarLancamentos(aguardando)
       linha.nf_atrasada = aguardando.some((c) => nfAtrasada(c, dia))
-      linha.a_pagar = soma(compras) - soma(mock.pagamentos.filter((p) => p.obra_id === o.id))
-      linha.fechamentos_rascunho = mock.fechamentos.filter((f) => f.obra_id === o.id && f.status === 'Rascunho').length
+      linha.a_pagar = soma(compras) - soma(db.pagamentos.filter((p) => p.obra_id === o.id))
+      linha.fechamentos_rascunho = db.fechamentos.filter((f) => f.obra_id === o.id && f.status === 'Rascunho').length
       pendente = pendente || linha.nf_atrasada || linha.fechamentos_rascunho > 0
     }
     linha.tem_pendencia = pendente
@@ -86,28 +176,37 @@ export function listarObrasPainel(perfil, agora = new Date()) {
   return ok(ordenarObras(lista))
 }
 
-export function avisosPainel(perfil) {
+export async function avisosPainel(perfil) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   const ids = obrasComFinanceiro(perfil).map((o) => o.id)
   return ok({
-    fechamentos_rascunho: mock.fechamentos.filter((f) => ids.includes(f.obra_id) && f.status === 'Rascunho').length,
-    compras_aguardando: contarLancamentos(mock.compras.filter((c) => ids.includes(c.obra_id) && c.status === 'Aguardando NF')),
+    fechamentos_rascunho: db.fechamentos.filter((f) => ids.includes(f.obra_id) && f.status === 'Rascunho').length,
+    compras_aguardando: contarLancamentos(db.compras.filter((c) => ids.includes(c.obra_id) && c.status === 'Aguardando NF')),
   })
 }
 
 // Para o seletor de obra do mestre e o cabeçalho da obra: sem nenhum valor.
-export const listarMinhasObras = (perfil) =>
-  ok(obrasVisiveis(perfil).filter((o) => o.status !== 'Concluída').map((o) => ({ id: o.id, nome: o.nome, tipo: o.tipo, orgao_contratante: o.orgao_contratante, status: o.status })))
+export async function listarMinhasObras(perfil) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  return ok(obrasVisiveis(perfil).filter((o) => o.status !== 'Concluída').map((o) => ({ id: o.id, nome: o.nome, tipo: o.tipo, orgao_contratante: o.orgao_contratante, status: o.status })))
+}
 
-export function obterObra(perfil, obraId) {
+export async function obterObra(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   const a = acesso(perfil, obraId)
   if (!a.ver) return falha(SEM_PERMISSAO)
-  return ok({ ...porId(mock.obras, obraId), acesso: a })
+  return ok({ ...porId(db.obras, obraId), acesso: a })
 }
 
 // ─── Gastos (obra × categoria) ──────────────────────────────────────────────
-export function gastosPorObra(perfil, periodo) {
+export async function gastosPorObra(perfil, periodo) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   const linhas = obrasComFinanceiro(perfil).map((o) => {
-    const compras = mock.compras.filter((c) => c.obra_id === o.id && (!periodo || dentro(c.data, periodo)))
+    const compras = db.compras.filter((c) => c.obra_id === o.id && (!periodo || dentro(c.data, periodo)))
     const diarias = valorDiariasNoPeriodo(o.id, periodo || { inicio: '1900-01-01', fim: '2999-12-31' })
     return { obra: { id: o.id, nome: o.nome }, ...gastosPorCategoria(compras, diarias) }
   })
@@ -115,19 +214,21 @@ export function gastosPorObra(perfil, periodo) {
 }
 
 // ─── Resumo da obra ─────────────────────────────────────────────────────────
-export function resumoObra(perfil, obraId) {
+export async function resumoObra(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
   const dia = hoje()
   const q = quinzenaDe(dia)
   const mes = { inicio: dia.slice(0, 8) + '01', fim: dia.slice(0, 8) + '31' }
-  const compras = mock.compras.filter((c) => c.obra_id === obraId)
-  const pags = mock.pagamentos.filter((p) => p.obra_id === obraId)
+  const compras = db.compras.filter((c) => c.obra_id === obraId)
+  const pags = db.pagamentos.filter((p) => p.obra_id === obraId)
   const aguardando = compras.filter((c) => c.status === 'Aguardando NF')
-  const presMes = mock.presencas.filter((p) => p.obra_id === obraId && dentro(p.data, mes) && p.situacao === 'Presente')
+  const presMes = db.presencas.filter((p) => p.obra_id === obraId && dentro(p.data, mes) && p.situacao === 'Presente')
 
   const atividades = [
     ...compras.map((c) => ({ quando: c.created_at, texto: `${nomeDe(c.criado_por)} lançou compra: ${c.descricao}` })),
-    ...mock.notas_fiscais.filter((n) => n.obra_id === obraId).map((n) => ({ quando: n.created_at, texto: `${nomeDe(n.criado_por)} anexou NF ${n.numero}` })),
+    ...db.notas_fiscais.filter((n) => n.obra_id === obraId).map((n) => ({ quando: n.created_at, texto: `${nomeDe(n.criado_por)} anexou NF ${n.numero}` })),
     ...pags.map((p) => ({ quando: p.created_at, texto: `${nomeDe(p.criado_por)} registrou pagamento` })),
     ...ultimosLancamentosPresenca(obraId),
   ].sort((a, b) => (a.quando < b.quando ? 1 : -1)).slice(0, 5)
@@ -146,125 +247,143 @@ export function resumoObra(perfil, obraId) {
 
 function ultimosLancamentosPresenca(obraId) {
   const porDia = new Map()
-  for (const p of mock.presencas) if (p.obra_id === obraId && !porDia.has(p.data)) porDia.set(p.data, p)
+  for (const p of db.presencas) if (p.obra_id === obraId && !porDia.has(p.data)) porDia.set(p.data, p)
   return [...porDia.values()].map((p) => ({ quando: p.created_at, texto: `${nomeDe(p.criado_por)} lançou presença` }))
 }
 
 // ─── Lista de compras ───────────────────────────────────────────────────────
-const comFornecedor = (i) => ({ ...i, fornecedor: porId(mock.fornecedores, i.fornecedor_sugerido_id) || null })
+const comFornecedor = (i) => ({ ...i, fornecedor: porId(db.fornecedores, i.fornecedor_sugerido_id) || null })
 
-export function listaComprasObra(perfil, obraId) {
+export async function listaComprasObra(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
-  return ok(mock.itens_lista_compra.filter((i) => i.obra_id === obraId).map(comFornecedor))
+  return ok(db.itens_lista_compra.filter((i) => i.obra_id === obraId).map(comFornecedor))
 }
 
-export function listaComprasGeral(perfil) {
+export async function listaComprasGeral(perfil) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   const ids = obrasComFinanceiro(perfil).map((o) => o.id)
-  return ok(mock.itens_lista_compra
+  return ok(db.itens_lista_compra
     .filter((i) => ids.includes(i.obra_id) && i.status === 'A comprar')
-    .map((i) => ({ ...comFornecedor(i), obra: { id: i.obra_id, nome: porId(mock.obras, i.obra_id).nome } })))
+    .map((i) => ({ ...comFornecedor(i), obra: { id: i.obra_id, nome: porId(db.obras, i.obra_id).nome } })))
 }
 
 // ─── Fornecedores, extrato e fechamento ─────────────────────────────────────
 // Quinzena de um pagamento: a do fechamento ligado; sem fechamento, a da data.
 function quinzenaDoPagamento(p) {
-  const f = p.fechamento_id && porId(mock.fechamentos, p.fechamento_id)
+  const f = p.fechamento_id && porId(db.fechamentos, p.fechamento_id)
   return f ? { inicio: f.quinzena_inicio, fim: f.quinzena_fim } : quinzenaDe(p.data)
 }
 
 function totaisFornecedor(obraId, fornecedorId, q) {
-  const compras = mock.compras.filter((c) => c.obra_id === obraId && c.fornecedor_id === fornecedorId && dentro(c.data, q))
-  const pags = mock.pagamentos.filter((p) => p.obra_id === obraId && p.fornecedor_id === fornecedorId && quinzenaDoPagamento(p).inicio === q.inicio)
+  const compras = db.compras.filter((c) => c.obra_id === obraId && c.fornecedor_id === fornecedorId && dentro(c.data, q))
+  const pags = db.pagamentos.filter((p) => p.obra_id === obraId && p.fornecedor_id === fornecedorId && quinzenaDoPagamento(p).inicio === q.inicio)
   const comprado = soma(compras)
   const semNF = soma(compras.filter((c) => c.status === 'Aguardando NF'))
   const pago = soma(pags)
   return { compras, pags, comprado, com_nf: comprado - semNF, sem_nf: semNF, pago, saldo: comprado - pago }
 }
 
-export function fornecedoresDaQuinzena(perfil, obraId, q) {
+export async function fornecedoresDaQuinzena(perfil, obraId, q) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
   const ids = new Set([
-    ...mock.compras.filter((c) => c.obra_id === obraId && dentro(c.data, q)).map((c) => c.fornecedor_id),
-    ...mock.pagamentos.filter((p) => p.obra_id === obraId && quinzenaDoPagamento(p).inicio === q.inicio).map((p) => p.fornecedor_id),
+    ...db.compras.filter((c) => c.obra_id === obraId && dentro(c.data, q)).map((c) => c.fornecedor_id),
+    ...db.pagamentos.filter((p) => p.obra_id === obraId && quinzenaDoPagamento(p).inicio === q.inicio).map((p) => p.fornecedor_id),
   ])
   return ok([...ids].map((fid) => {
     const t = totaisFornecedor(obraId, fid, q)
-    const fech = mock.fechamentos.find((f) => f.obra_id === obraId && f.fornecedor_id === fid && f.quinzena_inicio === q.inicio)
-    return { fornecedor: porId(mock.fornecedores, fid), comprado: t.comprado, com_nf: t.com_nf, sem_nf: t.sem_nf, pago: t.pago, saldo: t.saldo, fechamento: fech || null }
+    const fech = db.fechamentos.find((f) => f.obra_id === obraId && f.fornecedor_id === fid && f.quinzena_inicio === q.inicio)
+    return { fornecedor: porId(db.fornecedores, fid), comprado: t.comprado, com_nf: t.com_nf, sem_nf: t.sem_nf, pago: t.pago, saldo: t.saldo, fechamento: fech || null }
   }).sort((a, b) => a.fornecedor.nome.localeCompare(b.fornecedor.nome, 'pt-BR')))
 }
 
-export function extratoFornecedor(perfil, obraId, fornecedorId, q) {
+export async function extratoFornecedor(perfil, obraId, fornecedorId, q) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
   const t = totaisFornecedor(obraId, fornecedorId, q)
   const nfIds = new Set(t.compras.map((c) => c.nota_fiscal_id).filter(Boolean))
   return ok({
-    fornecedor: porId(mock.fornecedores, fornecedorId),
-    obra: porId(mock.obras, obraId),
+    fornecedor: porId(db.fornecedores, fornecedorId),
+    obra: porId(db.obras, obraId),
     compras: t.compras.sort((a, b) => (a.data < b.data ? -1 : 1)),
-    notas: mock.notas_fiscais.filter((n) => nfIds.has(n.id)),
+    notas: db.notas_fiscais.filter((n) => nfIds.has(n.id)),
     pagamentos: t.pags,
-    pendentes_obra: mock.compras.filter((c) => c.obra_id === obraId && c.fornecedor_id === fornecedorId && c.status === 'Aguardando NF'),
-    fechamento: mock.fechamentos.find((f) => f.obra_id === obraId && f.fornecedor_id === fornecedorId && f.quinzena_inicio === q.inicio) || null,
+    pendentes_obra: db.compras.filter((c) => c.obra_id === obraId && c.fornecedor_id === fornecedorId && c.status === 'Aguardando NF'),
+    fechamento: db.fechamentos.find((f) => f.obra_id === obraId && f.fornecedor_id === fornecedorId && f.quinzena_inicio === q.inicio) || null,
     totais: { comprado: t.comprado, com_nf: t.com_nf, sem_nf: t.sem_nf, pago: t.pago, saldo: t.saldo },
   })
 }
 
-export function obterFechamento(perfil, fechamentoId) {
-  const f = porId(mock.fechamentos, fechamentoId)
+export async function obterFechamento(perfil, fechamentoId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  const f = porId(db.fechamentos, fechamentoId)
   if (!f || !acesso(perfil, f.obra_id).financeiro) return falha(SEM_PERMISSAO)
   const q = { inicio: f.quinzena_inicio, fim: f.quinzena_fim }
   const t = totaisFornecedor(f.obra_id, f.fornecedor_id, q)
   return ok({
     ...f, fechado_por_nome: f.fechado_por ? nomeDe(f.fechado_por) : null,
-    obra: porId(mock.obras, f.obra_id), fornecedor: porId(mock.fornecedores, f.fornecedor_id),
+    obra: porId(db.obras, f.obra_id), fornecedor: porId(db.fornecedores, f.fornecedor_id),
     compras: t.compras, pagamentos: t.pags,
     totais: { comprado: t.comprado, com_nf: t.com_nf, sem_nf: t.sem_nf, pago: t.pago, saldo: t.saldo },
   })
 }
 
 // ─── Notas fiscais ──────────────────────────────────────────────────────────
-export function notasObra(perfil, obraId) {
+export async function notasObra(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
-  const forn = (id) => porId(mock.fornecedores, id)
+  const forn = (id) => porId(db.fornecedores, id)
   return ok({
-    obra: porId(mock.obras, obraId),
-    aguardando: mock.compras.filter((c) => c.obra_id === obraId && c.status === 'Aguardando NF').map((c) => ({ ...c, fornecedor: forn(c.fornecedor_id) })),
-    notas: mock.notas_fiscais.filter((n) => n.obra_id === obraId).map((n) => ({
+    obra: porId(db.obras, obraId),
+    aguardando: db.compras.filter((c) => c.obra_id === obraId && c.status === 'Aguardando NF').map((c) => ({ ...c, fornecedor: forn(c.fornecedor_id) })),
+    notas: db.notas_fiscais.filter((n) => n.obra_id === obraId).map((n) => ({
       ...n, fornecedor: forn(n.fornecedor_id),
-      compras: mock.compras.filter((c) => c.nota_fiscal_id === n.id),
-      pagamento: n.pagamento_id ? porId(mock.pagamentos, n.pagamento_id) : null,
+      compras: db.compras.filter((c) => c.nota_fiscal_id === n.id),
+      pagamento: n.pagamento_id ? porId(db.pagamentos, n.pagamento_id) : null,
     })),
   })
 }
 
-export function notasPendentesGeral(perfil) {
+export async function notasPendentesGeral(perfil) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   const ids = obrasComFinanceiro(perfil).map((o) => o.id)
-  return ok(mock.compras
+  return ok(db.compras
     .filter((c) => ids.includes(c.obra_id) && c.status === 'Aguardando NF')
-    .map((c) => ({ ...c, fornecedor: porId(mock.fornecedores, c.fornecedor_id), obra: porId(mock.obras, c.obra_id) })))
+    .map((c) => ({ ...c, fornecedor: porId(db.fornecedores, c.fornecedor_id), obra: porId(db.obras, c.obra_id) })))
 }
 
 // ─── Pagamentos ─────────────────────────────────────────────────────────────
-export function pagamentosObra(perfil, obraId) {
+export async function pagamentosObra(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
-  return ok(mock.pagamentos
+  return ok(db.pagamentos
     .filter((p) => p.obra_id === obraId)
     .map((p) => ({
-      ...p, fornecedor: porId(mock.fornecedores, p.fornecedor_id), quinzena: quinzenaDoPagamento(p),
-      notas: mock.notas_fiscais.filter((n) => n.pagamento_id === p.id),
+      ...p, fornecedor: porId(db.fornecedores, p.fornecedor_id), quinzena: quinzenaDoPagamento(p),
+      notas: db.notas_fiscais.filter((n) => n.pagamento_id === p.id),
     }))
     .sort((a, b) => (a.data < b.data ? 1 : -1)))
 }
 
 // ─── Presença ───────────────────────────────────────────────────────────────
 // Devolve funcionários SEM valor de diária: a diária mora em outra tabela.
-export function presencaDoDia(perfil, obraId, data) {
+export async function presencaDoDia(perfil, obraId, data) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).presenca) return falha(SEM_PERMISSAO)
-  const funcs = mock.funcionarios.filter((f) => f.obra_id === obraId && f.ativo)
+  const funcs = db.funcionarios.filter((f) => f.obra_id === obraId && f.ativo)
     .map((f) => ({ id: f.id, nome: f.nome, funcao: f.funcao, vinculo: f.vinculo }))
-  const doDia = mock.presencas.filter((p) => p.obra_id === obraId && p.data === data)
-  const anteriores = mock.presencas.filter((p) => p.obra_id === obraId && p.data < data && p.data >= somarDias(data, -10))
+  const doDia = db.presencas.filter((p) => p.obra_id === obraId && p.data === data)
+  const anteriores = db.presencas.filter((p) => p.obra_id === obraId && p.data < data && p.data >= somarDias(data, -10))
   const diaAnterior = anteriores.reduce((m, p) => (p.data > m ? p.data : m), '')
   const primeiro = doDia[0]
   return ok({
@@ -275,82 +394,116 @@ export function presencaDoDia(perfil, obraId, data) {
   })
 }
 
-export function salvarPresenca(perfil, obraId, data, marcacoes) {
+export async function salvarPresenca(perfil, obraId, data, marcacoes) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).presenca) return falha(SEM_PERMISSAO)
+  if (COM_BANCO) {
+    // Um envio só: quem já tinha linha no dia é corrigido (guarda o autor original),
+    // quem não tinha ganha linha nova. A chave única (funcionário + dia) evita duplicar.
+    // As linhas do dia são lidas AGORA do banco, não da carga guardada: outro aparelho
+    // pode ter lançado o mesmo dia há poucos segundos, e o autor dele tem que ficar.
+    const supabase = await banco()
+    const { data: doDia, error: erroLeitura } = await supabase.from('presencas')
+      .select('id, funcionario_id, criado_por').eq('obra_id', obraId).eq('data', data)
+    if (erroLeitura) return falha(erroDoBanco(erroLeitura, 'ler presença do dia'))
+    const linhas = Object.entries(marcacoes).map(([funcionario_id, situacao]) => {
+      const existente = doDia.find((p) => p.funcionario_id === funcionario_id)
+      return existente
+        ? { id: existente.id, obra_id: obraId, funcionario_id, data, situacao, criado_por: existente.criado_por, atualizado_por: perfil.id }
+        : { obra_id: obraId, funcionario_id, data, situacao, criado_por: perfil.id }
+    })
+    if (!linhas.length) return ok({ salvo: true })
+    const { error } = await supabase.from('presencas')
+      .upsert(linhas, { onConflict: 'funcionario_id,data', defaultToNull: false })
+    esquecerCarga()
+    if (error) return falha(erroDoBanco(error, 'salvar presença'))
+    return ok({ salvo: true })
+  }
   const agora = new Date()
   const hora = `${String(agora.getHours()).padStart(2, '0')}:${String(agora.getMinutes()).padStart(2, '0')}`
   for (const [funcionario_id, situacao] of Object.entries(marcacoes)) {
-    const existente = mock.presencas.find((p) => p.funcionario_id === funcionario_id && p.data === data)
+    const existente = db.presencas.find((p) => p.funcionario_id === funcionario_id && p.data === data)
     if (existente) {
       existente.situacao = situacao
       existente.atualizado_por = perfil.id
     } else {
-      mock.presencas.push({ id: `pr-${funcionario_id}-${data}`, obra_id: obraId, funcionario_id, data, situacao, criado_por: perfil.id, created_at: `${data}T${hora}:00` })
+      db.presencas.push({ id: `pr-${funcionario_id}-${data}`, obra_id: obraId, funcionario_id, data, situacao, criado_por: perfil.id, created_at: `${data}T${hora}:00` })
     }
   }
   return ok({ salvo: true })
 }
 
 // ─── Diárias da quinzena (nunca para o mestre) ──────────────────────────────
-export function diariasQuinzena(perfil, obraId, q) {
+export async function diariasQuinzena(perfil, obraId, q) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
   const linhas = calcularDiarias({
-    funcionarios: mock.funcionarios.filter((f) => f.obra_id === obraId),
-    presencas: mock.presencas.filter((p) => p.obra_id === obraId),
-    diarias: mock.diarias_funcionarios, periodo: q,
+    funcionarios: db.funcionarios.filter((f) => f.obra_id === obraId),
+    presencas: db.presencas.filter((p) => p.obra_id === obraId),
+    diarias: db.diarias_funcionarios, periodo: q,
   })
-  const semDiaria = mock.funcionarios.filter((f) => f.obra_id === obraId && f.vinculo === 'Diarista' && f.ativo &&
-    !mock.diarias_funcionarios.some((d) => d.funcionario_id === f.id)).length
+  const semDiaria = db.funcionarios.filter((f) => f.obra_id === obraId && f.vinculo === 'Diarista' && f.ativo &&
+    !db.diarias_funcionarios.some((d) => d.funcionario_id === f.id)).length
   return ok({
     linhas,
     total: soma(linhas, 'a_pagar'),
     sem_diaria: semDiaria,
-    pagamento: mock.pagamentos_diarias.find((p) => p.obra_id === obraId && p.quinzena_inicio === q.inicio) || null,
+    pagamento: db.pagamentos_diarias.find((p) => p.obra_id === obraId && p.quinzena_inicio === q.inicio) || null,
   })
 }
 
 // ─── Equipe da obra (só engenheiro) ─────────────────────────────────────────
-export function equipeObra(perfil, obraId) {
+export async function equipeObra(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).engenheiro) return falha(SEM_PERMISSAO)
   const dia = hoje()
   return ok({
-    funcionarios: mock.funcionarios.filter((f) => f.obra_id === obraId).map((f) => {
-      const vigente = mock.diarias_funcionarios.filter((d) => d.funcionario_id === f.id && d.vigente_desde <= dia)
+    funcionarios: db.funcionarios.filter((f) => f.obra_id === obraId).map((f) => {
+      const vigente = db.diarias_funcionarios.filter((d) => d.funcionario_id === f.id && d.vigente_desde <= dia)
         .sort((a, b) => (a.vigente_desde < b.vigente_desde ? 1 : -1))[0]
       return { ...f, diaria: vigente ? vigente.valor : null, diaria_desde: vigente ? vigente.vigente_desde : null }
     }),
-    acessos: mock.membros_obra.filter((m) => m.obra_id === obraId).map((m) => ({ ...m, pessoa: porId(mock.profiles, m.profile_id) })),
+    acessos: db.membros_obra.filter((m) => m.obra_id === obraId).map((m) => ({ ...m, pessoa: porId(db.profiles, m.profile_id) })),
   })
 }
 
 // ─── Cadastro geral de fornecedores ─────────────────────────────────────────
-export function listarFornecedores(perfil) {
+export async function listarFornecedores(perfil) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   const ids = obrasComFinanceiro(perfil).map((o) => o.id)
   if (!ids.length) return falha(SEM_PERMISSAO)
-  return ok(mock.fornecedores.map((f) => {
-    const compras = mock.compras.filter((c) => c.fornecedor_id === f.id && ids.includes(c.obra_id))
+  return ok(db.fornecedores.map((f) => {
+    const compras = db.compras.filter((c) => c.fornecedor_id === f.id && ids.includes(c.obra_id))
     return { ...f, obras: new Set(compras.map((c) => c.obra_id)).size, aguardando_nf: soma(compras.filter((c) => c.status === 'Aguardando NF')) }
   }).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')))
 }
 
 // ─── Usuários (só engenheiro) ───────────────────────────────────────────────
-export function listarUsuarios(perfil) {
+export async function listarUsuarios(perfil) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (perfil?.role !== 'Engenheiro') return falha(SEM_PERMISSAO)
-  return ok(mock.profiles.map((p) => ({
-    ...p, obras: mock.membros_obra.filter((m) => m.profile_id === p.id).map((m) => porId(mock.obras, m.obra_id).nome),
+  return ok(db.profiles.map((p) => ({
+    ...p, obras: db.membros_obra.filter((m) => m.profile_id === p.id).map((m) => porId(db.obras, m.obra_id).nome),
   })))
 }
 
 // ─── Planilha da licitação ──────────────────────────────────────────────────
 // Ver: Financeiro ou Medição na obra. Importar: só o engenheiro, e só sem medição.
-const temMedicao = (obraId) => mock.medicoes.some((m) => m.obra_id === obraId)
+const temMedicao = (obraId) => db.medicoes.some((m) => m.obra_id === obraId)
 
-export function obterPlanilha(perfil, obraId) {
+export async function obterPlanilha(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   const a = acesso(perfil, obraId)
   if (!a.financeiro && !a.medicao) return falha(SEM_PERMISSAO)
-  const pl = mock.planilhas_obra.find((p) => p.obra_id === obraId) || null
-  const etapas = mock.etapas_obra.filter((e) => e.obra_id === obraId).sort((x, y) => x.ordem - y.ordem)
-  const itens = mock.itens_contrato.filter((i) => i.obra_id === obraId).sort((x, y) => x.ordem - y.ordem)
+  const pl = db.planilhas_obra.find((p) => p.obra_id === obraId) || null
+  const etapas = db.etapas_obra.filter((e) => e.obra_id === obraId).sort((x, y) => x.ordem - y.ordem)
+  const itens = db.itens_contrato.filter((i) => i.obra_id === obraId).sort((x, y) => x.ordem - y.ordem)
   return ok({
     planilha: pl ? { ...pl, importada_por_nome: pl.importada_por ? nomeDe(pl.importada_por) : null } : null,
     etapas, itens,
@@ -364,12 +517,34 @@ export function obterPlanilha(perfil, obraId) {
 }
 
 // `leitura` é o resultado de lerPlanilha (lib/planilha.js), já conferido na prévia.
-export function importarPlanilha(perfil, obraId, { leitura, bdi_percentual, arquivo_nome }) {
+export async function importarPlanilha(perfil, obraId, { leitura, bdi_percentual, arquivo_nome }) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).engenheiro) return falha(SEM_PERMISSAO)
   if (temMedicao(obraId)) return falha('A obra já tem medição: a planilha não pode mais ser trocada.')
   if (!leitura?.itens?.length) return falha('A planilha não tem nenhum item para importar.')
+  if (leitura.erros?.length) return falha(`A planilha tem ${leitura.erros.length} erro(s). Corrija o arquivo antes de importar.`)
+  if (COM_BANCO) {
+    // O banco faz tudo ou nada (função importar_planilha, na migration).
+    const etapas = leitura.etapas.map((e) => ({ numero: e.numero, nome: e.nome, nivel: e.nivel, ordem: e.ordem, numero_pai: e.numero_pai || null }))
+    const itens = completarCusto(leitura.itens, bdi_percentual).map((i) => ({
+      etapa_numero: i.etapa_numero, item: i.item, codigo: i.codigo, banco: i.banco, descricao: i.descricao, unidade: i.unidade,
+      quantidade: i.quantidade, preco_unitario: i.preco_unitario, custo_unitario: i.custo_unitario, total: i.total, ordem: i.ordem,
+    }))
+    const { data, error } = await (await banco()).rpc('importar_planilha', {
+      p_obra_id: obraId, p_bdi: Number(bdi_percentual) || 0, p_etapas: etapas, p_itens: itens, p_por: perfil.id,
+      p_info: {
+        objeto: leitura.info?.objeto || null, referencia_precos: leitura.info?.referencia_precos || null,
+        total_geral: leitura.totaisPlanilha?.geral ?? null, total_sem_bdi: leitura.totaisPlanilha?.sem_bdi ?? null,
+        arquivo_nome: arquivo_nome || null,
+      },
+    })
+    esquecerCarga()
+    if (error) return falha(erroDoBanco(error, 'importar planilha'))
+    return ok(data)
+  }
   const sufixo = Date.now().toString(36)
-  const etapasAntigas = mock.etapas_obra.filter((e) => e.obra_id === obraId)
+  const etapasAntigas = db.etapas_obra.filter((e) => e.obra_id === obraId)
   const etapasNovas = leitura.etapas.map((e, k) => ({
     id: `et-${sufixo}-${k}`, obra_id: obraId, numero: e.numero, nome: e.nome, nivel: e.nivel, etapa_pai_id: null, ordem: e.ordem,
   }))
@@ -384,17 +559,17 @@ export function importarPlanilha(perfil, obraId, { leitura, bdi_percentual, arqu
     preco_unitario: i.preco_unitario, custo_unitario: i.custo_unitario, total: i.total, ordem: i.ordem,
   }))
   // Compras voltam para a etapa de mesmo número; sem par, Administração.
-  const comprasObra = mock.compras.filter((c) => c.obra_id === obraId)
+  const comprasObra = db.compras.filter((c) => c.obra_id === obraId)
   const { compras: religadas, semPar } = religarEtapas(comprasObra, etapasAntigas, etapasNovas)
-  for (const c of religadas) porId(mock.compras, c.id).etapa_id = c.etapa_id
+  for (const c of religadas) porId(db.compras, c.id).etapa_id = c.etapa_id
 
   const trocar = (lista, novos) => {
     for (let k = lista.length - 1; k >= 0; k--) if (lista[k].obra_id === obraId) lista.splice(k, 1)
     lista.push(...novos)
   }
-  trocar(mock.etapas_obra, etapasNovas)
-  trocar(mock.itens_contrato, itensNovos)
-  trocar(mock.planilhas_obra, [{
+  trocar(db.etapas_obra, etapasNovas)
+  trocar(db.itens_contrato, itensNovos)
+  trocar(db.planilhas_obra, [{
     id: `pl-${sufixo}`, obra_id: obraId, bdi_percentual: Number(bdi_percentual) || 0,
     objeto: leitura.info?.objeto || null, referencia_precos: leitura.info?.referencia_precos || null,
     total_geral_planilha: leitura.totaisPlanilha?.geral ?? null, total_sem_bdi_planilha: leitura.totaisPlanilha?.sem_bdi ?? null,
@@ -406,32 +581,36 @@ export function importarPlanilha(perfil, obraId, { leitura, bdi_percentual, arqu
 // ─── Orçado x Realizado ─────────────────────────────────────────────────────
 const TUDO = { inicio: '1900-01-01', fim: '2999-12-31' }
 
-export function orcadoRealizado(perfil, obraId) {
+export async function orcadoRealizado(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
-  const compras = mock.compras.filter((c) => c.obra_id === obraId)
+  const compras = db.compras.filter((c) => c.obra_id === obraId)
   const diarias = valorDiariasNoPeriodo(obraId, TUDO)
-  const etapas = mock.etapas_obra.filter((e) => e.obra_id === obraId)
+  const etapas = db.etapas_obra.filter((e) => e.obra_id === obraId)
   if (!etapas.length) return ok({ sem_planilha: true, gastos: gastosPorCategoria(compras, diarias) })
   return ok({
     sem_planilha: false,
-    ...orcadoPorEtapa({ etapas, itens: mock.itens_contrato.filter((i) => i.obra_id === obraId), compras, valorDiarias: diarias }),
+    ...orcadoPorEtapa({ etapas, itens: db.itens_contrato.filter((i) => i.obra_id === obraId), compras, valorDiarias: diarias }),
   })
 }
 
 // ─── Fluxo de caixa (fase 1: só saídas; entradas chegam com a Medição) ──────
-export function fluxoCaixa(perfil, obraId) {
+export async function fluxoCaixa(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
-  const obra = porId(mock.obras, obraId)
+  const obra = porId(db.obras, obraId)
   const dia = hoje()
-  const compras = mock.compras.filter((c) => c.obra_id === obraId)
-  const pags = mock.pagamentos.filter((p) => p.obra_id === obraId)
+  const compras = db.compras.filter((c) => c.obra_id === obraId)
+  const pags = db.pagamentos.filter((p) => p.obra_id === obraId)
   // Diárias em aberto: cada quinzena com presença e sem pagamento registrado.
-  const presencasObra = mock.presencas.filter((p) => p.obra_id === obraId)
+  const presencasObra = db.presencas.filter((p) => p.obra_id === obraId)
   const diariasEmAberto = []
   if (presencasObra.length) {
     const primeira = presencasObra.reduce((m, p) => (p.data < m ? p.data : m), dia)
     for (let q = quinzenaDe(primeira); q.inicio <= dia; q = quinzenaDe(somarDias(q.fim, 1))) {
-      if (mock.pagamentos_diarias.some((p) => p.obra_id === obraId && p.quinzena_inicio === q.inicio)) continue
+      if (db.pagamentos_diarias.some((p) => p.obra_id === obraId && p.quinzena_inicio === q.inicio)) continue
       const valor = valorDiariasNoPeriodo(obraId, q)
       if (valor > 0) diariasEmAberto.push({ fim: q.fim, valor })
     }
@@ -441,7 +620,7 @@ export function fluxoCaixa(perfil, obraId) {
     meses: fluxoMensal({
       inicio: obra.data_inicio, hojeIso: dia,
       pagamentos: pags,
-      pagamentosDiarias: mock.pagamentos_diarias.filter((p) => p.obra_id === obraId),
+      pagamentosDiarias: db.pagamentos_diarias.filter((p) => p.obra_id === obraId),
       aPagarFornecedores: Math.max(0, soma(compras) - soma(pags)),
       diariasEmAberto,
     }),
@@ -450,26 +629,28 @@ export function fluxoCaixa(perfil, obraId) {
 
 // ─── Pendências de cada módulo da obra (para a grade de módulos) ────────────
 // Só devolve os módulos que a pessoa pode abrir. tom: ok | at | cr | ''
-export function pendenciasObra(perfil, obraId, agora = new Date()) {
+export async function pendenciasObra(perfil, obraId, agora = new Date()) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   const a = acesso(perfil, obraId)
   if (!a.ver) return falha(SEM_PERMISSAO)
   const dia = hoje()
-  const obra = porId(mock.obras, obraId)
+  const obra = porId(db.obras, obraId)
   const p = {}
   if (a.financeiro) {
-    const compras = mock.compras.filter((c) => c.obra_id === obraId)
+    const compras = db.compras.filter((c) => c.obra_id === obraId)
     const aguardando = compras.filter((c) => c.status === 'Aguardando NF')
-    const itens = mock.itens_lista_compra.filter((i) => i.obra_id === obraId && i.status === 'A comprar')
+    const itens = db.itens_lista_compra.filter((i) => i.obra_id === obraId && i.status === 'A comprar')
     const itensAtrasados = itens.filter((i) => i.para_quando && i.para_quando < dia).length
-    const rascunhos = mock.fechamentos.filter((f) => f.obra_id === obraId && f.status === 'Rascunho').length
-    const pagsObra = mock.pagamentos.filter((pg) => pg.obra_id === obraId)
-    const semNota = pagsObra.filter((pg) => !mock.notas_fiscais.some((n) => n.pagamento_id === pg.id)).length
+    const rascunhos = db.fechamentos.filter((f) => f.obra_id === obraId && f.status === 'Rascunho').length
+    const pagsObra = db.pagamentos.filter((pg) => pg.obra_id === obraId)
+    const semNota = pagsObra.filter((pg) => !db.notas_fiscais.some((n) => n.pagamento_id === pg.id)).length
     const nAg = contarLancamentos(aguardando)
     p.resumo = { texto: 'Números da obra', tom: '' }
-    const etapas = mock.etapas_obra.filter((e) => e.obra_id === obraId)
+    const etapas = db.etapas_obra.filter((e) => e.obra_id === obraId)
     if (!etapas.length) p.orcado = { texto: 'Sem planilha', tom: '' }
     else {
-      const oxr = orcadoPorEtapa({ etapas, itens: mock.itens_contrato.filter((i) => i.obra_id === obraId), compras, valorDiarias: 0 })
+      const oxr = orcadoPorEtapa({ etapas, itens: db.itens_contrato.filter((i) => i.obra_id === obraId), compras, valorDiarias: 0 })
       p.orcado = oxr.estouradas
         ? { texto: plural(oxr.estouradas, 'etapa estourada', 'etapas estouradas'), tom: 'cr' }
         : { texto: 'Dentro do orçado', tom: 'ok' }
@@ -495,23 +676,27 @@ export function pendenciasObra(perfil, obraId, agora = new Date()) {
     }
   }
   if (a.engenheiro) {
-    const semDiaria = mock.funcionarios.filter((f) => f.obra_id === obraId && f.vinculo === 'Diarista' && f.ativo &&
-      !mock.diarias_funcionarios.some((d) => d.funcionario_id === f.id)).length
+    const semDiaria = db.funcionarios.filter((f) => f.obra_id === obraId && f.vinculo === 'Diarista' && f.ativo &&
+      !db.diarias_funcionarios.some((d) => d.funcionario_id === f.id)).length
     p.equipe = semDiaria ? { texto: plural(semDiaria, 'diarista sem diária', 'diaristas sem diária'), tom: 'at' } : { texto: 'Funcionários e acessos', tom: '' }
   }
   return ok(p)
 }
 
-export function fechamentosObra(perfil, obraId) {
+export async function fechamentosObra(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
-  return ok(mock.fechamentos.filter((f) => f.obra_id === obraId)
-    .map((f) => ({ ...f, fornecedor: porId(mock.fornecedores, f.fornecedor_id), total: soma(totaisFornecedor(obraId, f.fornecedor_id, { inicio: f.quinzena_inicio, fim: f.quinzena_fim }).compras) }))
+  return ok(db.fechamentos.filter((f) => f.obra_id === obraId)
+    .map((f) => ({ ...f, fornecedor: porId(db.fornecedores, f.fornecedor_id), total: soma(totaisFornecedor(obraId, f.fornecedor_id, { inicio: f.quinzena_inicio, fim: f.quinzena_fim }).compras) }))
     .sort((a, b) => (a.quinzena_inicio < b.quinzena_inicio ? 1 : -1)))
 }
 
 // ─── Relatórios ─────────────────────────────────────────────────────────────
 // Obras que aparecem no seletor: as que têm Financeiro ou Presença liberados.
-export function obrasDosRelatorios(perfil) {
+export async function obrasDosRelatorios(perfil) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (perfil?.role === 'Mestre') return ok([])
   return ok(obrasVisiveis(perfil)
     .filter((o) => { const a = acesso(perfil, o.id); return a.financeiro || a.presenca || a.medicao })
@@ -519,7 +704,9 @@ export function obrasDosRelatorios(perfil) {
 }
 
 // obraId vazio = "Todas as obras". O mestre não tem relatório nenhum.
-export function relatoriosPara(perfil, obraId) {
+export async function relatoriosPara(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
   if (!perfil || perfil.role === 'Mestre' || perfil.role === 'Pendente') return ok([])
   const ac = obraId ? acesso(perfil, obraId) : somarAcessos(obrasVisiveis(perfil).map((o) => acesso(perfil, o.id)))
   return ok(relatoriosDisponiveis(ac))

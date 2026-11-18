@@ -1,0 +1,19 @@
+{
+  "compras": ["id", "obra_id", "fornecedor_id", "data", "descricao", "categoria", "valor", "numero_pedido", "grupo_id", "etapa_id", "observacao", "quinzena_inicio", "status", "nota_fiscal_id", "fechamento_id", "criado_por", "atualizado_por", "created_at", "updated_at"],
+  "diarias_funcionarios": ["id", "obra_id", "funcionario_id", "valor", "vigente_desde", "criado_por", "created_at"],
+  "etapas_obra": ["id", "obra_id", "numero", "nome", "nivel", "etapa_pai_id", "ordem", "created_at"],
+  "fechamentos": ["id", "obra_id", "fornecedor_id", "quinzena_inicio", "quinzena_fim", "status", "fechado_por", "fechado_em", "observacao", "created_at"],
+  "fornecedores": ["id", "nome", "documento", "contato", "whatsapp", "chave_pix", "categoria_padrao", "ativo", "criado_por", "created_at"],
+  "funcionarios": ["id", "obra_id", "nome", "funcao", "vinculo", "chave_pix", "ativo", "criado_por", "created_at"],
+  "itens_contrato": ["id", "obra_id", "etapa_id", "item", "codigo", "banco", "descricao", "unidade", "quantidade", "preco_unitario", "custo_unitario", "total", "ordem", "created_at"],
+  "itens_lista_compra": ["id", "obra_id", "descricao", "quantidade", "unidade", "para_quando", "fornecedor_sugerido_id", "observacao", "status", "compra_id", "criado_por", "atualizado_por", "created_at", "updated_at"],
+  "medicoes": ["id", "obra_id", "numero", "periodo_inicio", "periodo_fim", "status", "aprovado_por", "aprovado_em", "data_prevista_recebimento", "valor_recebido", "data_recebimento", "recebido_por", "criado_por", "created_at"],
+  "membros_obra": ["id", "obra_id", "profile_id", "pode_financeiro", "pode_presenca_diario", "pode_medicao", "created_at"],
+  "notas_fiscais": ["id", "obra_id", "fornecedor_id", "numero", "data_emissao", "valor", "arquivo_path", "arquivo_tipo", "pagamento_id", "criado_por", "atualizado_por", "created_at", "updated_at"],
+  "obras": ["id", "nome", "tipo", "orgao_contratante", "numero_contrato", "endereco", "data_inicio", "data_prevista_fim", "status", "criado_por", "created_at"],
+  "pagamentos": ["id", "obra_id", "fornecedor_id", "fechamento_id", "data", "valor", "forma", "comprovante_path", "observacao", "criado_por", "atualizado_por", "created_at", "updated_at"],
+  "pagamentos_diarias": ["id", "obra_id", "quinzena_inicio", "quinzena_fim", "valor_total", "data_pagamento", "forma", "observacao", "criado_por", "created_at"],
+  "planilhas_obra": ["id", "obra_id", "bdi_percentual", "objeto", "referencia_precos", "total_geral_planilha", "total_sem_bdi_planilha", "arquivo_path", "arquivo_nome", "importada_em", "importada_por", "created_at", "updated_at"],
+  "presencas": ["id", "obra_id", "funcionario_id", "data", "situacao", "criado_por", "atualizado_por", "created_at", "updated_at"],
+  "profiles": ["id", "nome", "email", "whatsapp", "role", "ativo", "created_at"]
+}

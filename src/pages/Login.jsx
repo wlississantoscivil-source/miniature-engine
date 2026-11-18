@@ -21,7 +21,8 @@ export default function Login({ onEntrar, onCriarConta }) {
   }
 
   const entrarComo = async (p) => {
-    const { data } = await entrar(p.email)
+    const { data, erro: falha } = await entrar(p.email)
+    if (falha) return setErro(falha)
     onEntrar(data)
   }
 
@@ -43,7 +44,8 @@ export default function Login({ onEntrar, onCriarConta }) {
 
         <div className="card pad col" style={{ marginTop: 10 }}>
           <span className="lab">Dados de exemplo · entrar como</span>
-          <p className="note">Enquanto o banco não existe, toque numa pessoa para ver o app pelos olhos dela.</p>
+          <p className="note">Enquanto o login não está ligado, toque numa pessoa para ver o app pelos olhos dela.</p>
+          {exemplos.erro && <div className="err" role="alert">{exemplos.erro}</div>}
           <div className="demo">
             {(exemplos.data || []).map((p) => (
               <button type="button" key={p.id} onClick={() => entrarComo(p)}>{p.nome}<span>{p.role}</span></button>
