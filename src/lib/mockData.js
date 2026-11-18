@@ -182,7 +182,8 @@ export const etapas_obra = [
 
 const itemC = (id, etapa_id, item, codigo, banco, descricao, unidade, quantidade, preco_unitario, ordem) => ({
   id, obra_id: 'o1', etapa_id, item, codigo, banco, descricao, unidade, quantidade, preco_unitario,
-  custo_unitario: Math.round((preco_unitario / 1.25) * 100) / 100, ordem,
+  custo_unitario: Math.round((preco_unitario / 1.25) * 100) / 100,
+  total: Math.round(quantidade * preco_unitario * 100) / 100, ordem,
 })
 export const itens_contrato = [
   itemC('ic1', 'et1', '1.1', '98525', 'SINAPI', 'LOCAÇÃO E LIMPEZA DO TERRENO', 'm²', 1200, 18.7, 2),

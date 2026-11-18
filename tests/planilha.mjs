@@ -2,7 +2,7 @@
 // A planilha abaixo é inventada, no MESMO FORMATO da planilha real de Aporá
 // (que não entra no projeto: é uma proposta real, com endereço).
 import {
-  lerPlanilha, conferir, completarCusto, religarEtapas, rotuloEtapa, numero, identificarColunas,
+  lerPlanilha, conferir, completarCusto, religarEtapas, rotuloEtapa, numero, identificarColunas, totaisItens,
 } from '../src/lib/planilha.js'
 
 let ok = 0
@@ -88,6 +88,14 @@ const novas = [{ id: 'n1', numero: '3' }]
 const rel = religarEtapas([{ id: 'c1', etapa_id: 'e1' }, { id: 'c2', etapa_id: 'e2' }, { id: 'c3', etapa_id: null }], antigas, novas)
 conferir_('religa pelo número; sem par vai para Administração', rel.compras.map((x) => x.etapa_id), ['n1', null, null])
 conferir_('conta as que ficaram sem par', rel.semPar, 1)
+
+// Total da obra = soma da coluna Total (arredondada linha a linha), não quantidade × preço.
+// 3 × 0,335 = 1,005 por linha; a planilha arredonda para 1,01 → 2,02 (q × p daria 2,01).
+const doisItens = [
+  { quantidade: 3, preco_unitario: 0.335, custo_unitario: 0.27, total: 1.01 },
+  { quantidade: 3, preco_unitario: 0.335, custo_unitario: 0.27, total: 1.01 },
+]
+conferir_('total soma a coluna Total da planilha', totaisItens(doisItens), { total: 2.02, sem_bdi: 1.62 })
 
 console.log(`${ok}/${tot} — planilha`)
 process.exit(ok === tot ? 0 : 1)

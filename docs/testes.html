@@ -1,0 +1,163 @@
+<title>Testes do Minha Obra</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<style>
+/* Ferramenta de uma coluna: rodada no topo, cartões por módulo. Cores do app (concreto + laranja). */
+:root{
+  --fundo:#E9E8E4; --cartao:#FFFFFF; --texto:#22211F; --suave:#5E5B55; --linha:#D3D0C9;
+  --principal:#C2501E; --ok:#2F6B3A; --ok-fundo:#E2EFE3; --cr:#A3261B; --cr-fundo:#F6E1DE; --at-fundo:#F1EFEA;
+  --f-texto:"IBM Plex Sans",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --f-num:"IBM Plex Mono",ui-monospace,Consolas,monospace;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){
+  --fundo:#1C1B19; --cartao:#272623; --texto:#ECEAE5; --suave:#ABA79F; --linha:#3B3935;
+  --principal:#EE7A45; --ok:#8CCB95; --ok-fundo:#20352A; --cr:#F09186; --cr-fundo:#3D2320; --at-fundo:#2F2D2A; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --fundo:#1C1B19; --cartao:#272623; --texto:#ECEAE5; --suave:#ABA79F; --linha:#3B3935;
+  --principal:#EE7A45; --ok:#8CCB95; --ok-fundo:#20352A; --cr:#F09186; --cr-fundo:#3D2320; --at-fundo:#2F2D2A; color-scheme:dark}
+body{background:var(--fundo);color:var(--texto);font-family:var(--f-texto);font-size:15px;line-height:1.5}
+.pagina{max-width:720px;margin:0 auto;padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:20px}
+.rodada{border-left:4px solid var(--principal);padding:4px 0 4px 14px;display:flex;flex-direction:column;gap:6px}
+.rodada h1{margin:0;font-size:20px;line-height:1.3;text-wrap:balance}
+.rodada p{margin:0;color:var(--suave)}
+.rodada .antes{color:var(--texto)}
+.contagem{font-family:var(--f-num);font-variant-numeric:tabular-nums;font-size:13px;color:var(--suave)}
+.modulo{display:flex;flex-direction:column;gap:10px}
+.modulo h2{margin:0;font-size:14px;font-weight:600;color:var(--suave)}
+.item{background:var(--cartao);border:1px solid var(--linha);border-radius:8px;padding:14px;display:flex;flex-direction:column;gap:10px}
+.item[data-st="ok"]{border-color:var(--ok)}
+.item[data-st="problema"]{border-color:var(--cr)}
+.item h3{margin:0;font-size:16px;line-height:1.35}
+.meta{display:flex;flex-wrap:wrap;gap:6px;font-size:13px}
+.meta span{background:var(--at-fundo);border-radius:4px;padding:2px 8px}
+ol{margin:0;padding-left:22px;display:flex;flex-direction:column;gap:4px}
+.esperado{background:var(--at-fundo);border-radius:6px;padding:8px 10px}
+.esperado b{display:block;font-size:13px;color:var(--suave);font-weight:600}
+.botoes{display:grid;grid-template-columns:repeat(3,1fr);gap:6px}
+.botoes button{font:inherit;font-size:14px;padding:10px 6px;border-radius:6px;border:1px solid var(--linha);background:var(--cartao);color:var(--texto);cursor:pointer}
+.botoes button[aria-pressed="true"][data-v="a_testar"]{background:var(--at-fundo);border-color:var(--suave);font-weight:600}
+.botoes button[aria-pressed="true"][data-v="ok"]{background:var(--ok-fundo);border-color:var(--ok);color:var(--ok);font-weight:600}
+.botoes button[aria-pressed="true"][data-v="problema"]{background:var(--cr-fundo);border-color:var(--cr);color:var(--cr);font-weight:600}
+button:focus-visible,textarea:focus-visible{outline:2px solid var(--principal);outline-offset:2px}
+label{font-size:13px;color:var(--suave)}
+textarea{font:inherit;width:100%;box-sizing:border-box;min-height:64px;padding:8px;border-radius:6px;border:1px solid var(--linha);background:var(--cartao);color:var(--texto);resize:vertical}
+.salvo{font-size:12px;color:var(--suave);min-height:1em}
+.aviso{background:var(--cartao);border:1px dashed var(--linha);border-radius:8px;padding:16px;color:var(--suave)}
+</style>
+
+<main class="pagina">
+  <header class="rodada" id="rodada">
+    <h1 id="r-nome">Testes do Minha Obra</h1>
+    <p id="r-nota">Carregando a rodada…</p>
+    <p class="antes" id="r-antes" hidden></p>
+    <span class="contagem" id="r-conta"></span>
+  </header>
+  <div id="lista"><div class="aviso">Carregando os itens…</div></div>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id)
+const ROTULO = { a_testar: 'A testar', ok: 'Funcionou', problema: 'Problema' }
+let db = null, itens = [], somenteLeitura = false
+const rascunhos = {}
+
+function el(tag, props = {}, ...filhos) {
+  const e = document.createElement(tag)
+  for (const [k, v] of Object.entries(props)) {
+    if (k === 'text') e.textContent = v
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v)
+    else e.setAttribute(k, v)
+  }
+  for (const f of filhos) if (f) e.append(f)
+  return e
+}
+
+// Passos aceitam **negrito** para os nomes da tela.
+function comNegrito(texto) {
+  const frag = document.createDocumentFragment()
+  String(texto).split(/(\*\*[^*]+\*\*)/).forEach((p) => {
+    if (p.startsWith('**') && p.endsWith('**')) frag.append(el('b', { text: p.slice(2, -2) }))
+    else if (p) frag.append(p)
+  })
+  return frag
+}
+
+async function gravar(id, campos, aviso) {
+  if (!db || somenteLeitura) return
+  aviso.textContent = 'Salvando…'
+  try { await db.collection('itens').doc(id).update(campos); aviso.textContent = 'Salvo' }
+  catch (e) {
+    if (e?.code === 'invalid_argument') { somenteLeitura = true; aviso.textContent = 'Você só pode ver esta página, não marcar.' }
+    else aviso.textContent = 'Não salvou. Confira a internet e tente de novo.'
+  }
+}
+
+function cartao(it) {
+  const aviso = el('div', { class: 'salvo' })
+  const st = it.status || 'a_testar'
+  const botoes = el('div', { class: 'botoes', role: 'group', 'aria-label': 'Resultado' })
+  for (const v of Object.keys(ROTULO)) {
+    botoes.append(el('button', { type: 'button', 'data-v': v, 'aria-pressed': String(st === v), text: ROTULO[v],
+      onclick: () => { if ((it.status || 'a_testar') !== v) gravar(it.id, { status: v }, aviso) } }))
+  }
+  const idObs = 'obs-' + it.id
+  const obs = el('textarea', { id: idObs, placeholder: 'O que você viu (obrigatório se deu problema)' })
+  obs.value = rascunhos[it.id] ?? it.obs ?? ''
+  obs.addEventListener('input', () => { rascunhos[it.id] = obs.value })
+  obs.addEventListener('blur', () => {
+    if (obs.value !== (it.obs ?? '')) gravar(it.id, { obs: obs.value }, aviso).then(() => delete rascunhos[it.id])
+  })
+  const meta = el('div', { class: 'meta' })
+  if (it.conta) meta.append(el('span', { text: 'Conta: ' + it.conta }))
+  if (it.grava) meta.append(el('span', { text: it.grava }))
+  const passos = el('ol')
+  for (const p of it.passos || []) passos.append(el('li', {}, comNegrito(p)))
+  return el('article', { class: 'item', 'data-st': st },
+    el('h3', { text: it.titulo }), meta.childNodes.length ? meta : null, passos,
+    el('div', { class: 'esperado' }, el('b', { text: 'Se deu certo, você vê' }), comNegrito(it.esperado || '')),
+    botoes, el('label', { for: idObs, text: 'Observação' }), obs, aviso)
+}
+
+function desenhar() {
+  const lista = $('lista')
+  const ativo = document.activeElement?.id
+  lista.replaceChildren()
+  if (!itens.length) { lista.append(el('div', { class: 'aviso', text: 'Nada a testar agora.' })); $('r-conta').textContent = ''; return }
+  const grupos = new Map()
+  for (const it of [...itens].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0))) {
+    if (!grupos.has(it.modulo)) grupos.set(it.modulo, [])
+    grupos.get(it.modulo).push(it)
+  }
+  const sec = el('div', { style: 'display:flex;flex-direction:column;gap:20px' })
+  for (const [mod, lista_] of grupos) {
+    const s = el('section', { class: 'modulo' }, el('h2', { text: mod }))
+    lista_.forEach((it) => s.append(cartao(it)))
+    sec.append(s)
+  }
+  lista.append(sec)
+  const n = (v) => itens.filter((i) => (i.status || 'a_testar') === v).length
+  $('r-conta').textContent = `${n('a_testar')} a testar · ${n('ok')} funcionou · ${n('problema')} com problema`
+  if (ativo) document.getElementById(ativo)?.focus()
+}
+
+async function iniciar() {
+  db = window.claude ? await window.claude.use('db') : null
+  if (!db) {
+    $('r-nota').textContent = 'Não deu para abrir os testes aqui. Abra esta página pelo link do Claude, com a sua conta.'
+    $('lista').replaceChildren(); return
+  }
+  const timer = setTimeout(() => { $('r-nota').textContent = 'Os testes ainda não chegaram. Confira a internet.' }, 10000)
+  db.doc('rodada/atual').onSnapshot((s) => {
+    clearTimeout(timer)
+    const r = s.exists ? s.data() : null
+    $('r-nome').textContent = r?.nome || 'Testes do Minha Obra'
+    $('r-nota').textContent = r?.nota || 'Nenhuma rodada aberta.'
+    $('r-antes').hidden = !r?.antes
+    $('r-antes').textContent = r?.antes ? 'Antes de começar: ' + r.antes : ''
+  }, () => { clearTimeout(timer); $('r-nota').textContent = 'Não deu para ler a rodada.' })
+  db.collection('itens').onSnapshot((snap) => {
+    itens = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+    desenhar()
+  }, () => { $('lista').replaceChildren(el('div', { class: 'aviso', text: 'Não deu para ler os itens. Recarregue a página.' })) })
+}
+iniciar()
+</script>

@@ -17,6 +17,8 @@ export const DIAS_CORRECAO_MESTRE = 3 // [DESCOBRIR NO USO]
 const z = (n) => String(n).padStart(2, '0')
 export const isoLocal = (d) => `${d.getFullYear()}-${z(d.getMonth() + 1)}-${z(d.getDate())}`
 export const hoje = () => isoLocal(new Date())
+// Data e hora no fuso local: 'AAAA-MM-DDTHH:MM:SS'.
+export const momentoLocal = (d = new Date()) => `${isoLocal(d)}T${z(d.getHours())}:${z(d.getMinutes())}:${z(d.getSeconds())}`
 const paraData = (iso) => {
   const [a, m, d] = iso.split('-').map(Number)
   return new Date(a, m - 1, d)

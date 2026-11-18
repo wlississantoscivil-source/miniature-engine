@@ -8,9 +8,9 @@
 import * as mock from './mockData.js'
 import {
   acessoNaObra, calcularDiarias, contarLancamentos, dentro, estadoPresencaHoje, gastosPorCategoria, hoje,
-  nfAtrasada, ordenarObras, plural, quinzenaDe, relatoriosDisponiveis, soma, somarAcessos, somarDias,
+  momentoLocal, nfAtrasada, ordenarObras, plural, quinzenaDe, relatoriosDisponiveis, soma, somarAcessos, somarDias,
 } from './regras.js'
-import { completarCusto, religarEtapas } from './planilha.js'
+import { completarCusto, religarEtapas, totaisItens } from './planilha.js'
 import { fluxoMensal, orcadoPorEtapa } from './orcamento.js'
 
 export const USAR_MOCK = true
@@ -356,8 +356,7 @@ export function obterPlanilha(perfil, obraId) {
     etapas, itens,
     resumo: {
       etapas: etapas.length, itens: itens.length, zerados: itens.filter((i) => Number(i.quantidade) === 0).length,
-      total: soma(itens.map((i) => ({ valor: i.quantidade * i.preco_unitario }))),
-      sem_bdi: soma(itens.map((i) => ({ valor: i.quantidade * i.custo_unitario }))),
+      ...totaisItens(itens),
     },
     tem_medicao: temMedicao(obraId),
     pode_importar: a.engenheiro && !temMedicao(obraId),
@@ -382,7 +381,7 @@ export function importarPlanilha(perfil, obraId, { leitura, bdi_percentual, arqu
   const itensNovos = completarCusto(leitura.itens, bdi_percentual).map((i, k) => ({
     id: `ic-${sufixo}-${k}`, obra_id: obraId, etapa_id: idPorNumero.get(i.etapa_numero), item: i.item, codigo: i.codigo,
     banco: i.banco, descricao: i.descricao, unidade: i.unidade, quantidade: i.quantidade,
-    preco_unitario: i.preco_unitario, custo_unitario: i.custo_unitario, ordem: i.ordem,
+    preco_unitario: i.preco_unitario, custo_unitario: i.custo_unitario, total: i.total, ordem: i.ordem,
   }))
   // Compras voltam para a etapa de mesmo número; sem par, Administração.
   const comprasObra = mock.compras.filter((c) => c.obra_id === obraId)
@@ -399,7 +398,7 @@ export function importarPlanilha(perfil, obraId, { leitura, bdi_percentual, arqu
     id: `pl-${sufixo}`, obra_id: obraId, bdi_percentual: Number(bdi_percentual) || 0,
     objeto: leitura.info?.objeto || null, referencia_precos: leitura.info?.referencia_precos || null,
     total_geral_planilha: leitura.totaisPlanilha?.geral ?? null, total_sem_bdi_planilha: leitura.totaisPlanilha?.sem_bdi ?? null,
-    arquivo_nome: arquivo_nome || null, importada_em: new Date().toISOString().slice(0, 19), importada_por: perfil.id,
+    arquivo_nome: arquivo_nome || null, importada_em: momentoLocal(), importada_por: perfil.id,
   }])
   return ok({ etapas: etapasNovas.length, itens: itensNovos.length, compras_sem_etapa: semPar })
 }

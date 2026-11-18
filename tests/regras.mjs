@@ -3,7 +3,7 @@
 import {
   quinzenaDe, rotuloQuinzena, quinzenaAnterior, brl, diariaVigente, calcularDiarias,
   gastosPorCategoria, acessoNaObra, abasVisiveis, podeEditarPresenca, estadoPresencaHoje,
-  nfAtrasada, mensagemCobrancaNF, contarLancamentos, plural, relatoriosDisponiveis, somarAcessos,
+  nfAtrasada, mensagemCobrancaNF, contarLancamentos, plural, relatoriosDisponiveis, somarAcessos, momentoLocal,
 } from '../src/lib/regras.js'
 
 let ok = 0
@@ -115,6 +115,9 @@ const msg = mensagemCobrancaNF({ nome: 'Casa do Construtor' }, [{ obra: { nome: 
 ] }]).replace(/ /g, ' ')
 conferir('mensagem cita a obra e o órgão', msg.startsWith('Olá, Casa do Construtor! Aqui é da obra Escola Vila Nova (Prefeitura de Caruaru).'), true)
 conferir('mensagem traz o total', msg.includes('Total: R$ 2.750,00'), true)
+
+// Importar às 22h30 no Brasil grava o mesmo dia (em UTC já seria o dia seguinte).
+conferir('momento no fuso local, sem pular o dia à noite', momentoLocal(new Date(2026, 10, 17, 22, 30, 5)), '2026-11-17T22:30:05')
 
 console.log(`${ok}/${tot} — regras`)
 process.exit(ok === tot ? 0 : 1)

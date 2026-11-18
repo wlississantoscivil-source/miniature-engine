@@ -204,11 +204,19 @@ export function completarCusto(itens, bdiPercentual) {
   return itens.map((i) => ({ ...i, custo_unitario: i.custo_unitario ?? centavos(i.preco_unitario / fator) }))
 }
 
+// Totais da obra. O com BDI soma a coluna Total da planilha (já arredondada
+// linha a linha), nunca quantidade × preço: a soma não bate com o arquivo.
+export function totaisItens(itens) {
+  return {
+    total: centavos(itens.reduce((t, i) => t + Number(i.total), 0)),
+    sem_bdi: centavos(itens.reduce((t, i) => t + i.quantidade * i.custo_unitario, 0)),
+  }
+}
+
 // Conferências da prévia: soma dos itens × totais lidos do rodapé.
 export function conferir(leitura, bdiPercentual) {
   const itens = completarCusto(leitura.itens, bdiPercentual)
-  const total = centavos(itens.reduce((t, i) => t + (i.total ?? i.quantidade * i.preco_unitario), 0))
-  const semBdi = centavos(itens.reduce((t, i) => t + i.quantidade * i.custo_unitario, 0))
+  const { total, sem_bdi: semBdi } = totaisItens(itens)
   const { geral, sem_bdi: semBdiPlanilha } = leitura.totaisPlanilha || {}
   return {
     total, sem_bdi: semBdi,

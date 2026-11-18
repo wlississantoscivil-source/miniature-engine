@@ -415,6 +415,7 @@ Para que serve: os itens da planilha da licitação (base do Orçado x Realizado
 | unidade | text | sim | ex.: m², m³, un, kg |
 | quantidade | numeric(14,4) | sim | contratada; pode ser 0 (item já executado antes de uma retomada) |
 | preco_unitario | numeric(14,2) | sim | "Valor Unit com BDI" da planilha (o preço do contrato, usado na medição) |
+| total | numeric(14,2) | sim | *(18/11/2026)* coluna "Total" da linha, como está na planilha (já arredondada). O total da obra soma esta coluna, nunca quantidade × preço |
 | ordem | integer | sim | ordem da planilha |
 | created_at | timestamptz | sim | automático |
 

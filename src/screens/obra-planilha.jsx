@@ -129,7 +129,7 @@ function TabelaPlanilha({ etapas, itens }) {
               <tr key={`i${l.ordem}`} className={Number(l.i.quantidade) === 0 ? 'zerado' : ''}>
                 <td>{l.i.item}</td><td>{l.i.codigo}</td><td>{l.i.banco}</td><td className="desc">{l.i.descricao}</td><td>{l.i.unidade}</td>
                 <td className="r">{qtd(l.i.quantidade)}</td><td className="r">{brl(l.i.custo_unitario)}</td><td className="r">{brl(l.i.preco_unitario)}</td>
-                <td className="r">{brl(l.i.total ?? l.i.quantidade * l.i.preco_unitario)}</td>
+                <td className="r">{brl(l.i.total)}</td>
               </tr>
             )))}
         </tbody>
