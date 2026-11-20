@@ -81,6 +81,7 @@ export const ABAS_OBRA = [
   { id: 'pagamentos', rotulo: 'Pagamentos', precisa: 'financeiro' },
   { id: 'presenca', rotulo: 'Presença', precisa: 'presenca' },
   { id: 'diario', rotulo: 'Diário', precisa: 'presenca' },
+  { id: 'planejamento', rotulo: 'Planejamento', precisa: 'ver' },
   { id: 'equipe', rotulo: 'Equipe', precisa: 'engenheiro' },
 ]
 export const abasVisiveis = (acesso) => ABAS_OBRA.filter((a) => acesso[a.precisa])

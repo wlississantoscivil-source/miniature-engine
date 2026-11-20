@@ -254,6 +254,20 @@ Resposta curta, em português simples, sem jargão:
 Seção de passagem entre conversas: **substitua inteira** a cada parada, não acumule.
 Histórico vai para `docs/DIARIO.md` e para o Git.
 
+**Planejamento / Last Planner (20/11 — em construção, NÃO está no GitHub):**
+- Aba `planejamento` na grade da obra: `src/screens/obra-planejamento.jsx` (4 sub-abas,
+  UMA lista de atividades para todas), regras em `src/lib/planejamento.js`, teste em
+  `tests/planejamento.mjs`, `tests/restricoes.mjs` e `tests/semana.mjs`. As 4 abas prontas:
+  **EAP**, **Longo prazo**, **Médio prazo** (restrições por semana) e **Curto prazo**
+  (quadro + checklist + "Não realizado" com causa + PPC). O Mestre tem "Semana" na barra
+  (só o curto prazo). Fica para depois: baseline do cronograma, gráfico do PPC ao longo
+  das semanas e histórico por semana (hoje a semana passada mostra a situação de hoje).
+- **Próximo passo do Planejamento:** tabelas no banco (migration + RLS + GRANT), com o ok
+  do engenheiro, e revisão de código antes de subir (o diff toca em `dados.js`).
+- **Sem tabela no banco:** `dados.js` guarda na memória (some no F5); os exemplos ligam
+  à obra do banco pelo nome. Decisões: EAP livre (não vem da planilha), até 3 níveis,
+  seg–sex sem feriados nacionais; mestre só vê e mexe no Curto prazo.
+
 **Diário de obra (20/11 — no GitHub, commit `472a888`):**
 - Tela `src/screens/obra-diario.jsx` na grade da obra (aba `diario`) e na barra do Mestre.
   Revisão de código feita e consertada (gravação otimista que reabre o rascunho se falhar,

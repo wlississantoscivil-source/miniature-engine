@@ -3,13 +3,16 @@ import { Menu, Topo, Carregando, Empty, useCarregar } from '../components/index.
 import { listarMinhasObras } from '../lib/dados.js'
 import Presenca from '../screens/obra-presenca.jsx'
 import Diario from '../screens/obra-diario.jsx'
+import Planejamento from '../screens/obra-planejamento.jsx'
 import Perfil from '../screens/perfil.jsx'
 
-// Casca do Mestre: Presença, Diário e Perfil. A obra escolhida vale para os dois módulos.
+// Casca do Mestre: Presença, Diário, Semana (curto prazo do Planejamento) e Perfil.
+// A obra escolhida vale para os três módulos.
 // O mestre nunca chama função de dinheiro, e a camada de dados também recusa.
 const MODULOS = {
   presenca: { titulo: 'Presença', Modulo: Presenca },
   diario: { titulo: 'Diário de Obra', Modulo: Diario },
+  planejamento: { titulo: 'Semana', Modulo: Planejamento },
 }
 
 export default function AppMestre({ perfil, onSair }) {
@@ -20,6 +23,7 @@ export default function AppMestre({ perfil, onSair }) {
   const itens = [
     { id: 'presenca', rotulo: 'Presença', icone: 'presenca' },
     { id: 'diario', rotulo: 'Diário', icone: 'diario' },
+    { id: 'planejamento', rotulo: 'Semana', icone: 'plano' },
     { id: 'perfil', rotulo: 'Perfil', icone: 'user' },
   ]
 
