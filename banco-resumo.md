@@ -1,7 +1,7 @@
 # Resumo do banco — Minha Obra
 
 > A memória do banco para os próximos módulos e para o passo 10 (login e banco).
-> Atualizado em 18/11/2026. Detalhe de cada campo: `PRD-BACKEND.md`. O SQL de verdade:
+> Atualizado em 20/11/2026. Detalhe de cada campo: `PRD-BACKEND.md`. O SQL de verdade:
 > `supabase/migrations/`. Os dados de exemplo: `supabase-seed.sql`.
 
 ## Onde está
@@ -16,7 +16,8 @@
 
 Toda tabela tem a RLS (a tranca por linha) **ligada**, mas com uma regra provisória
 chamada `dev_provisorio` que **libera tudo para todo mundo**, inclusive para quem não fez
-login. Está na migration `20261118200200_dev_acesso_provisorio.sql`.
+login. Está nas migrations `20261118200200_dev_acesso_provisorio.sql` e
+`20261120120100_dev_acesso_provisorio_diario.sql` (esta, só para `diarios_obra` e `fotos`).
 
 Só serve porque o app roda **apenas no computador do engenheiro**, com dados de exemplo.
 **Não publicar na Vercel assim.** No passo 10:
@@ -24,12 +25,15 @@ Só serve porque o app roda **apenas no computador do engenheiro**, com dados de
 1. Ligar `profiles` ao login (`auth.users`) e criar o gatilho de cadastro (perfil nasce `Pendente`).
    Os perfis de exemplo já existem: o gatilho deve **trocar o id do perfil de mesmo email pelo
    id do login** — todas as tabelas acompanham sozinhas (`on update cascade`).
-2. Uma migration nova que apaga as regras `dev_provisorio`, tira a liberação de `anon`
+2. Uma migration nova que apaga as regras `dev_provisorio` (das 19 tabelas), tira a liberação de `anon`
    (tabelas e a função `importar_planilha`) e cria as regras de verdade, por obra e por perfil
    (`PRD-BACKEND.md`, "Permissões"). O teste que prova: o mestre não lê nenhuma linha de compras.
 3. Preencher `criado_por` / `atualizado_por` pelo login (`auth.uid()`), e não pela tela.
+4. `salvarDiario` grava e lê de volta o id (`insert … select`): a regra de **leitura** de
+   `diarios_obra` tem que deixar o autor ler o que acabou de gravar, senão a gravação dá certo e a
+   tela mostra erro. O mesmo vale para `fotos` quando o Storage entrar.
 
-## As tabelas (17)
+## As tabelas (19)
 
 | Tabela | O que guarda | Exemplo hoje |
 |---|---|---|
@@ -47,12 +51,14 @@ Só serve porque o app roda **apenas no computador do engenheiro**, com dados de
 | `notas_fiscais` | As NFs recebidas. O arquivo ainda não sobe (por enquanto só o tipo: imagem ou pdf) | 5 |
 | `pagamentos` | Cada pagamento a um fornecedor numa obra (Pix, Boleto, Transferência, Dinheiro) | 4 |
 | `funcionarios` | O pessoal do canteiro que entra na lista de presença (não são usuários) | 32 |
-| `presencas` | Presença de cada funcionário em cada dia (`Presente`, `Falta`, `Atestado`, `Folga`). Uma por funcionário por dia | 745 |
+| `presencas` | Presença de cada funcionário em cada dia (`Presente`, `Falta`, `Atestado`, `Folga`). Uma por funcionário por dia | 761 |
 | `diarias_funcionarios` | O valor da diária de cada diarista, com histórico. **Separada de `funcionarios` de propósito**: o mestre lê funcionários sem ver valor | 19 |
 | `pagamentos_diarias` | Registro de que as diárias de uma obra numa quinzena foram pagas (total congelado) | 1 |
+| `diarios_obra` | O diário de obra: um por dia por obra, com clima de manhã e de tarde (`Bom`, `Nublado`, `Chuva`, `Impraticável`), serviços executados e ocorrências. O efetivo **não** é guardado: vem da contagem de `Presente` na presença do dia | 7 |
+| `fotos` | As fotos de cada diário: legenda e o endereço do arquivo (`arquivo_path`). **Hoje sem arquivo**: o Storage ainda não existe, e as fotos tiradas no app não são gravadas | 5 |
 
-Ainda **não existem** (fase 2 e 3): `diarios_obra`, `fotos`, `medicao_itens`. Nem os
-buckets de arquivo (Storage).
+Ainda **não existem** (fase 3): `medicao_itens`. Nem os buckets de arquivo (Storage):
+quando entrar o bucket `fotos`, `fotos.arquivo_path` volta a ser obrigatório (PRD).
 
 ## Regras que o banco já garante
 
@@ -63,9 +69,9 @@ buckets de arquivo (Storage).
 - Valor de compra, pagamento e diária maior que zero; BDI entre 0 e 100; etapa de nível 1 a 3.
 - Sem duplicata: um email por pessoa, uma presença por funcionário por dia, uma planilha por
   obra, uma etapa por número na obra, um fechamento por obra + fornecedor + quinzena, uma
-  diária por funcionário por data de início.
+  diária por funcionário por data de início, um diário por obra por dia.
 - `updated_at` automático em `planilhas_obra`, `compras`, `itens_lista_compra`, `notas_fiscais`,
-  `pagamentos`, `presencas`.
+  `pagamentos`, `presencas`, `diarios_obra`.
 - **Importar planilha** é a função `importar_planilha`: tudo ou nada, recusa se houver medição,
   religa as compras à etapa de mesmo número.
 
@@ -78,7 +84,7 @@ buckets de arquivo (Storage).
 - Compra de fechamento `Fechado` só o engenheiro edita; etapa da compra tem que ser da mesma obra;
   partes de compra dividida com a mesma NF e a mesma etapa.
 - Fechamento quinzenal automático (dia 1º e 16, às 6h).
-- Janela de 3 dias do mestre na presença.
+- Janela de 3 dias do mestre na presença e no diário (hoje só `regras.js` confere).
 
 ## Datas
 
@@ -93,6 +99,7 @@ buckets de arquivo (Storage).
 |---|---|---|
 | Criar conta | `criarConta` | `profiles` (nasce `Pendente`) |
 | Presença → Salvar presença | `salvarPresenca` | `presencas` |
+| Diário → Salvar diário | `salvarDiario` | `diarios_obra` (as fotos ainda não) |
 | Planilha → Importar | `importarPlanilha` | `planilhas_obra`, `etapas_obra`, `itens_contrato`, `compras` (via `importar_planilha`) |
 
 ## Como mexer no banco daqui para a frente

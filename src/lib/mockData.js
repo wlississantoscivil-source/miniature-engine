@@ -202,3 +202,38 @@ export const medicoes = []
 // Etapa de cada compra da Escola Vila Nova (as outras obras não têm planilha).
 const ETAPA_DA_COMPRA = { c1: 'et3', c4: 'et3', c2: 'et4', c11: 'et4', c12: 'et4' }
 for (const c of compras) c.etapa_id = ETAPA_DA_COMPRA[c.id] || null
+
+// ─── Diário de obra (fase 2) ─────────────────────────────────────────────────
+// Viram a carga do banco pelo scripts/gerar-seed.mjs (seed aplicado em 20/11/2026).
+// Escola Vila Nova: os 6 últimos dias úteis até ontem (1 com chuva à tarde, 2 com fotos).
+// UBS Centro: 1 dia, para conferir que trocar de obra troca o diário.
+// O efetivo não é guardado: é contado na presença do mesmo dia.
+function diasUteisAte(ultimo, n) {
+  const dias = []
+  for (let d = ultimo; dias.length < n; d = somarDias(d, -1)) {
+    const sem = diaDaSemana(d)
+    if (sem !== 'Domingo' && sem !== 'Sábado') dias.push(d)
+  }
+  return dias
+}
+const [e1, e2, e3, e4, e5, e6] = diasUteisAte(somarDias(HOJE, -1), 6)
+const [u1] = diasUteisAte(somarDias(HOJE, -1), 1)
+
+export const diarios_obra = [
+  { id: 'do1', obra_id: 'o1', data: e1, clima_manha: 'Bom', clima_tarde: 'Bom', servicos: 'Alvenaria do bloco B, eixos 3 a 5\nChapisco das paredes internas do bloco A', ocorrencias: null, criado_por: 'u-carlos', created_at: `${e1}T17:10:00` },
+  { id: 'do2', obra_id: 'o1', data: e2, clima_manha: 'Nublado', clima_tarde: 'Chuva', servicos: 'Reboco interno do bloco B (sala 3)\nArmação das vigas da cobertura', ocorrencias: 'Chuva forte às 14h parou o reboco externo. Equipe passou para serviço interno.', criado_por: 'u-carlos', created_at: `${e2}T17:25:00` },
+  { id: 'do3', obra_id: 'o1', data: e3, clima_manha: 'Bom', clima_tarde: 'Nublado', servicos: 'Concretagem das vigas do bloco B\nLimpeza do canteiro', ocorrencias: 'Visita do fiscal da prefeitura às 10h, sem pendências.', criado_por: 'u-carlos', created_at: `${e3}T16:50:00` },
+  { id: 'do4', obra_id: 'o1', data: e4, clima_manha: 'Bom', clima_tarde: 'Bom', servicos: 'Fôrmas das vigas do bloco B\nAssentamento de tubulação de esgoto', ocorrencias: 'Cimento chegou com 1 dia de atraso.', criado_por: 'u-carlos', created_at: `${e4}T17:05:00` },
+  { id: 'do5', obra_id: 'o1', data: e5, clima_manha: 'Bom', clima_tarde: 'Bom', servicos: 'Alvenaria do bloco B, eixos 1 a 3', ocorrencias: null, criado_por: 'u-carlos', created_at: `${e5}T17:00:00` },
+  { id: 'do6', obra_id: 'o1', data: e6, clima_manha: 'Nublado', clima_tarde: 'Nublado', servicos: 'Marcação da alvenaria do bloco B\nRecebimento de 8.000 blocos cerâmicos', ocorrencias: null, criado_por: 'u-wlisses', created_at: `${e6}T18:30:00` },
+  { id: 'do7', obra_id: 'o2', data: u1, clima_manha: 'Bom', clima_tarde: 'Nublado', servicos: 'Instalação elétrica dos consultórios\nPintura da recepção (1ª demão)', ocorrencias: null, criado_por: 'u-joaquim', created_at: `${u1}T16:40:00` },
+]
+
+// Fotos de exemplo: sem arquivo de verdade (a tela desenha um quadro com a legenda).
+export const fotos = [
+  { id: 'fo1', obra_id: 'o1', diario_id: 'do1', arquivo_path: null, legenda: 'Bloco B, eixo 4', criado_por: 'u-carlos', created_at: `${e1}T15:02:00` },
+  { id: 'fo2', obra_id: 'o1', diario_id: 'do1', arquivo_path: null, legenda: 'Chapisco sala 2', criado_por: 'u-carlos', created_at: `${e1}T15:10:00` },
+  { id: 'fo3', obra_id: 'o1', diario_id: 'do2', arquivo_path: null, legenda: 'Chuva às 14h', criado_por: 'u-carlos', created_at: `${e2}T14:05:00` },
+  { id: 'fo4', obra_id: 'o1', diario_id: 'do2', arquivo_path: null, legenda: 'Armação das vigas', criado_por: 'u-carlos', created_at: `${e2}T11:30:00` },
+  { id: 'fo5', obra_id: 'o1', diario_id: 'do2', arquivo_path: null, legenda: null, criado_por: 'u-carlos', created_at: `${e2}T11:31:00` },
+]

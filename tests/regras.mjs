@@ -75,10 +75,10 @@ const ana = { id: 'ana', role: 'Auxiliar', ativo: true }
 const carlos = { id: 'carlos', role: 'Mestre', ativo: true }
 const pedro = { id: 'pedro', role: 'Pendente', ativo: true }
 const ids = (abas) => abas.map((a) => a.id)
-conferir('auxiliar com tudo na obra 1 vê presença, sem equipe', ids(abasVisiveis(acessoNaObra(ana, membros, 'o1'))), ['resumo', 'orcado', 'fluxo', 'lista', 'fornecedores', 'notas', 'pagamentos', 'presenca'])
+conferir('auxiliar com tudo na obra 1 vê presença e diário, sem equipe', ids(abasVisiveis(acessoNaObra(ana, membros, 'o1'))), ['resumo', 'orcado', 'fluxo', 'lista', 'fornecedores', 'notas', 'pagamentos', 'presenca', 'diario'])
 conferir('auxiliar só com financeiro na obra 2 não vê presença', ids(abasVisiveis(acessoNaObra(ana, membros, 'o2'))).includes('presenca'), false)
 conferir('mestre nunca tem financeiro', acessoNaObra(carlos, membros, 'o1').financeiro, false)
-conferir('mestre vê só presença', ids(abasVisiveis(acessoNaObra(carlos, membros, 'o1'))), ['presenca'])
+conferir('mestre vê só presença e diário', ids(abasVisiveis(acessoNaObra(carlos, membros, 'o1'))), ['presenca', 'diario'])
 conferir('mestre não vê obra que não é dele', acessoNaObra(carlos, membros, 'o2').ver, false)
 conferir('pendente não vê nada', acessoNaObra(pedro, membros, 'o1').ver, false)
 conferir('mestre mesmo com linha financeira continua sem financeiro',

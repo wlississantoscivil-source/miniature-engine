@@ -7,15 +7,16 @@ import ObraFornecedores from './obra-fornecedores.jsx'
 import ObraNotas from './obra-notas.jsx'
 import ObraPagamentos from './obra-pagamentos.jsx'
 import Presenca from './obra-presenca.jsx'
+import Diario from './obra-diario.jsx'
 import Equipe from './obra-equipe.jsx'
 import OrcadoRealizado from './obra-orcado.jsx'
 import FluxoCaixa from './obra-fluxo.jsx'
 import DadosObra from './obra-dados.jsx'
 
-const ICONE = { resumo: 'tabela', orcado: 'folha', fluxo: 'pay', lista: 'compras', fornecedores: 'forn', notas: 'notas', pagamentos: 'pay', presenca: 'presenca', equipe: 'colab' }
+const ICONE = { resumo: 'tabela', orcado: 'folha', fluxo: 'pay', lista: 'compras', fornecedores: 'forn', notas: 'notas', pagamentos: 'pay', presenca: 'presenca', diario: 'diario', equipe: 'colab' }
 const MODULO = {
   resumo: Resumo, orcado: OrcadoRealizado, fluxo: FluxoCaixa, lista: ListaCompras, fornecedores: ObraFornecedores,
-  notas: ObraNotas, pagamentos: ObraPagamentos, presenca: Presenca, equipe: Equipe, dados: DadosObra,
+  notas: ObraNotas, pagamentos: ObraPagamentos, presenca: Presenca, diario: Diario, equipe: Equipe, dados: DadosObra,
 }
 // "Dados da obra" não fica na grade: abre pelo botão Editar (só engenheiro).
 const DADOS = { id: 'dados', rotulo: 'Dados da obra' }

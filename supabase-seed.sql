@@ -1,5 +1,5 @@
 -- Carga inicial do Minha Obra: os dados de exemplo de src/lib/mockData.js.
--- Gerado por scripts/gerar-seed.mjs em 18/11/2026. Não edite à mão: rode o script.
+-- Gerado por scripts/gerar-seed.mjs em 20/11/2026. Não edite à mão: rode o script.
 -- Pode rodar de novo sem duplicar (on conflict do nothing). Não apaga nada.
 begin;
 
@@ -189,7 +189,33 @@ insert into public.pagamentos_diarias (id, obra_id, quinzena_inicio, quinzena_fi
   (pg_temp.u('pd1'), pg_temp.u('o1'), '2026-10-16', '2026-10-31', 16400, '2026-11-03', 'Pix', pg_temp.u('u-wlisses'))
 on conflict do nothing;
 
--- presencas (745)
+-- diarios_obra (7)
+insert into public.diarios_obra (id, obra_id, data, clima_manha, clima_tarde, servicos, ocorrencias, criado_por, created_at) values
+  (pg_temp.u('do1'), pg_temp.u('o1'), '2026-11-19', 'Bom', 'Bom', 'Alvenaria do bloco B, eixos 3 a 5
+Chapisco das paredes internas do bloco A', null, pg_temp.u('u-carlos'), '2026-11-19T17:10:00-03:00'),
+  (pg_temp.u('do2'), pg_temp.u('o1'), '2026-11-18', 'Nublado', 'Chuva', 'Reboco interno do bloco B (sala 3)
+Armação das vigas da cobertura', 'Chuva forte às 14h parou o reboco externo. Equipe passou para serviço interno.', pg_temp.u('u-carlos'), '2026-11-18T17:25:00-03:00'),
+  (pg_temp.u('do3'), pg_temp.u('o1'), '2026-11-17', 'Bom', 'Nublado', 'Concretagem das vigas do bloco B
+Limpeza do canteiro', 'Visita do fiscal da prefeitura às 10h, sem pendências.', pg_temp.u('u-carlos'), '2026-11-17T16:50:00-03:00'),
+  (pg_temp.u('do4'), pg_temp.u('o1'), '2026-11-16', 'Bom', 'Bom', 'Fôrmas das vigas do bloco B
+Assentamento de tubulação de esgoto', 'Cimento chegou com 1 dia de atraso.', pg_temp.u('u-carlos'), '2026-11-16T17:05:00-03:00'),
+  (pg_temp.u('do5'), pg_temp.u('o1'), '2026-11-13', 'Bom', 'Bom', 'Alvenaria do bloco B, eixos 1 a 3', null, pg_temp.u('u-carlos'), '2026-11-13T17:00:00-03:00'),
+  (pg_temp.u('do6'), pg_temp.u('o1'), '2026-11-12', 'Nublado', 'Nublado', 'Marcação da alvenaria do bloco B
+Recebimento de 8.000 blocos cerâmicos', null, pg_temp.u('u-wlisses'), '2026-11-12T18:30:00-03:00'),
+  (pg_temp.u('do7'), pg_temp.u('o2'), '2026-11-19', 'Bom', 'Nublado', 'Instalação elétrica dos consultórios
+Pintura da recepção (1ª demão)', null, pg_temp.u('u-joaquim'), '2026-11-19T16:40:00-03:00')
+on conflict do nothing;
+
+-- fotos (5)
+insert into public.fotos (id, obra_id, diario_id, arquivo_path, legenda, criado_por, created_at) values
+  (pg_temp.u('fo1'), pg_temp.u('o1'), pg_temp.u('do1'), null, 'Bloco B, eixo 4', pg_temp.u('u-carlos'), '2026-11-19T15:02:00-03:00'),
+  (pg_temp.u('fo2'), pg_temp.u('o1'), pg_temp.u('do1'), null, 'Chapisco sala 2', pg_temp.u('u-carlos'), '2026-11-19T15:10:00-03:00'),
+  (pg_temp.u('fo3'), pg_temp.u('o1'), pg_temp.u('do2'), null, 'Chuva às 14h', pg_temp.u('u-carlos'), '2026-11-18T14:05:00-03:00'),
+  (pg_temp.u('fo4'), pg_temp.u('o1'), pg_temp.u('do2'), null, 'Armação das vigas', pg_temp.u('u-carlos'), '2026-11-18T11:30:00-03:00'),
+  (pg_temp.u('fo5'), pg_temp.u('o1'), pg_temp.u('do2'), null, null, pg_temp.u('u-carlos'), '2026-11-18T11:31:00-03:00')
+on conflict do nothing;
+
+-- presencas (809)
 insert into public.presencas (id, obra_id, funcionario_id, data, situacao, criado_por, created_at)
 select pg_temp.u('pr-' || eq.fs[i] || '-' || v.d), pg_temp.u(v.o), pg_temp.u(eq.fs[i]), v.d::date,
        case substr(v.s, i, 1) when 'P' then 'Presente' when 'F' then 'Falta' when 'A' then 'Atestado' else 'Folga' end,
@@ -264,7 +290,13 @@ from (values
   ('2026-11-17','o1','u-carlos','07:30','PPPPPPPPPAPPPPPP'),
   ('2026-11-17','o2','u-joaquim','07:30','PPPPPPFPP'),
   ('2026-11-17','o3','u-joaquim','07:30','PPPPPPP'),
-  ('2026-11-18','o2','u-joaquim','07:42','PPPPPPPPP')
+  ('2026-11-18','o1','u-carlos','07:30','PPAPPPPPPPPPPPPF'),
+  ('2026-11-18','o2','u-joaquim','07:30','PPPPPPPPP'),
+  ('2026-11-18','o3','u-joaquim','07:30','APPPPPP'),
+  ('2026-11-19','o1','u-carlos','07:30','PPPPPPPPFPPPPPPP'),
+  ('2026-11-19','o2','u-joaquim','07:30','PPAPPPPPP'),
+  ('2026-11-19','o3','u-joaquim','07:30','PPPPPPF'),
+  ('2026-11-20','o2','u-joaquim','07:42','PPPPPPPPF')
 ) v(d, o, c, h, s)
 join (values
   ('o1', array['fu1','fu2','fu3','fu4','fu5','fu6','fu7','fu8','fu9','fu10','fu11','fu12','fu13','fu14','fu15','fu16']),

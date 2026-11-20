@@ -263,7 +263,14 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .sticky-save{position:sticky;bottom:84px;z-index:5;padding:10px 0 0;background:linear-gradient(transparent,var(--fundo) 30%)}
 @media (min-width:900px){.sticky-save{bottom:0;padding-bottom:16px}}
 
-/* diário (fase 2: ainda sem tela; vem do preview.html) */
+/* diário (layout do preview.html) */
+.diario-cab{display:flex;align-items:center;gap:12px;width:100%;text-align:left;min-height:48px}
+.diario-dia{min-width:52px;text-align:center}
+.diario-dia b{display:block;font-family:var(--mono);font-variant-numeric:tabular-nums;font-size:24px;line-height:1}
+.diario-dia span{font-size:12px;font-weight:600;color:var(--apagado)}
+.diario-cab .tt{font-size:16px;font-weight:600;line-height:1.3}
+.diario-cab .mt{font-size:14px;color:var(--apagado);margin-top:2px}
+.ph img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
 .photos{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 @media (min-width:700px){.photos{grid-template-columns:repeat(4,1fr)}}
 .ph{aspect-ratio:4/3;border-radius:var(--r);position:relative;overflow:hidden;display:flex;align-items:flex-end;color:#fff}
@@ -280,9 +287,10 @@ svg.i{width:22px;height:22px;stroke:currentColor;fill:none;stroke-width:1.8;stro
 .field textarea:focus{outline:none;border-color:var(--principal);box-shadow:0 0 0 3px #E8622A33}
 .field textarea.edited{border-color:var(--at);background:#FFFBF4}
 .wx{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
-.wx button{min-height:52px;border:1.5px solid var(--linha);border-radius:var(--r);background:var(--branco);font-weight:600;font-size:14px}
+.wx button{min-height:52px;padding:0 2px;border:1.5px solid var(--linha);border-radius:var(--r);background:var(--branco);font-weight:600;font-size:14px}
 .wx button.on{background:var(--cafe);border-color:var(--cafe);color:var(--creme)}
 .wx button.on.ch{background:#4A6B87;border-color:#4A6B87}
+@media (max-width:420px){.wx button{font-size:13px}}
 .stamp{font-size:13px;color:var(--apagado);line-height:1.6}
 
 /* estado vazio */

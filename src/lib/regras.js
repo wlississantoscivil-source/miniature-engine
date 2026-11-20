@@ -70,7 +70,7 @@ export function acessoNaObra(perfil, membros, obraId) {
   return nada
 }
 
-// Abas da obra na Fase 1. Diário (fase 2) e Medição (fase 3) ainda não aparecem.
+// Abas da obra. Diário (fase 2) já aparece, com dados de exemplo; Medição (fase 3) ainda não.
 export const ABAS_OBRA = [
   { id: 'resumo', rotulo: 'Resumo', precisa: 'financeiro' },
   { id: 'orcado', rotulo: 'Orçado x Realizado', precisa: 'financeiro' },
@@ -80,6 +80,7 @@ export const ABAS_OBRA = [
   { id: 'notas', rotulo: 'Notas', precisa: 'financeiro' },
   { id: 'pagamentos', rotulo: 'Pagamentos', precisa: 'financeiro' },
   { id: 'presenca', rotulo: 'Presença', precisa: 'presenca' },
+  { id: 'diario', rotulo: 'Diário', precisa: 'presenca' },
   { id: 'equipe', rotulo: 'Equipe', precisa: 'engenheiro' },
 ]
 export const abasVisiveis = (acesso) => ABAS_OBRA.filter((a) => acesso[a.precisa])
@@ -226,4 +227,30 @@ export function ordenarObras(obras) {
     (peso[a.status] - peso[b.status]) ||
     (Number(b.tem_pendencia) - Number(a.tem_pendencia)) ||
     a.nome.localeCompare(b.nome, 'pt-BR'))
+}
+
+// ─── Diário de obra ──────────────────────────────────────────────────────────
+// Mesmos textos do CHECK de `diarios_obra` (PRD-BACKEND.md).
+export const CLIMAS = ['Bom', 'Nublado', 'Chuva', 'Impraticável']
+export const DIARIO_REPETIDO = 'Já existe diário nesta data. É um por dia.'
+// Clima que atrapalha o serviço: ganha cor de atenção.
+export const climaRuim = (c) => c === 'Chuva' || c === 'Impraticável'
+
+// O diário de hoje está faltando? Só em obra em andamento e em dia útil.
+export function diarioPendente(status, temHoje, dia = hoje()) {
+  const sem = diaDaSemana(dia)
+  return status === 'Em andamento' && !temHoje && sem !== 'Sábado' && sem !== 'Domingo'
+}
+
+// Confere o diário antes de gravar. Devolve { campo: 'mensagem' } (vazio = pode gravar).
+export function errosDiario(perfil, diario, existentes, dia = hoje()) {
+  const e = {}
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(diario.data || '')) e.data = 'Informe a data.'
+  else if (diario.data > dia) e.data = 'O diário não pode ser de um dia que ainda não chegou.'
+  else if (!podeEditarPresenca(perfil, diario.data, dia)) e.data = `O mestre lança diário só até ${DIAS_CORRECAO_MESTRE} dias atrás.`
+  else if (existentes.some((d) => d.data === diario.data)) e.data = DIARIO_REPETIDO
+  if (!CLIMAS.includes(diario.clima_manha)) e.clima_manha = 'Escolha o clima da manhã.'
+  if (!CLIMAS.includes(diario.clima_tarde)) e.clima_tarde = 'Escolha o clima da tarde.'
+  if (!(diario.servicos || '').trim()) e.servicos = 'Escreva os serviços executados.'
+  return e
 }

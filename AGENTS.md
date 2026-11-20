@@ -94,6 +94,11 @@ com git, e a Vercel publica sozinha. A pessoa não digita comando.
   coluna `timestamptz` (ex.: `planilhas_obra.importada_em`) recebe o momento com fuso
   (ou `now()` no banco), e a tela converte para o horário local ao mostrar; texto sem
   fuso lá seria lido como UTC e erraria 3 horas.
+- **Fotos do Diário não são gravadas (20/11/2026).** `diarios_obra` e `fotos` estão no
+  banco, mas o Storage não existe: `salvarDiario` grava só o diário; a foto tirada no app é
+  miniatura local (`URL.createObjectURL`) e some ao sair da tela. Ao ligar o Storage: bucket
+  `fotos` (privado), comprimir (1200px, 0.8), gravar o **caminho** em `fotos.arquivo_path`
+  (obrigatório) e mostrar com endereço temporário (`createSignedUrl`), não com o caminho.
 - **Valor de diária mora em `diarias_funcionarios`, separado de `funcionarios`**,
   de propósito: o mestre lê funcionários sem enxergar valor. Não junte as tabelas.
 - **As presenças do mock são geradas em relação a hoje** (`mockData.js`); as
@@ -244,10 +249,30 @@ Resposta curta, em português simples, sem jargão:
 - o que não deu para conferir e por quê;
 - o que espera decisão dele — uma pergunta por vez, com recomendação.
 
-## Onde paramos (atualizado em 18/11/2026, noite)
+## Onde paramos (atualizado em 20/11/2026)
 
 Seção de passagem entre conversas: **substitua inteira** a cada parada, não acumule.
 Histórico vai para `docs/DIARIO.md` e para o Git.
+
+**Diário de obra (20/11, ainda NÃO foi para o Git):**
+- Tela `src/screens/obra-diario.jsx` na grade da obra (aba `diario`) e na barra do Mestre.
+  Revisão de código feita e consertada (gravação otimista que reabre o rascunho se falhar,
+  confirmação ao fechar, pendência só em dia útil).
+- Banco: migrations `20261120120000_diario_obra.sql` (tabelas, CHECK do clima, um por dia,
+  RLS, GRANT) e `…120100_dev_acesso_provisorio_diario.sql` (regra aberta até o passo 10).
+  Testado no SQL: clima "Sol" recusado (23514), dia repetido recusado (23505). Seed do Diário
+  aplicado (7 diários, 5 fotos sem arquivo); o `supabase-seed.sql` foi refeito com ele.
+- `npm run check` em zero. Conferência no painel Browser (agente, 20/11 10:27): diário do
+  Carlos gravou em `diarios_obra` com `obra_id` da Escola Vila Nova, sobreviveu ao F5, e o
+  segundo do mesmo dia é avisado na hora. O teste do agente foi apagado depois (com o ok do engenheiro).
+- Conferência do engenheiro (20/11 10:31, painel Browser): diário do Joaquim no Refeitório
+  gravou com o `obra_id` da obra escolhida no seletor. Ficou no banco.
+- A 1ª tentativa dele não mandou nenhum pedido ao banco (registro do Supabase: um só POST no
+  dia, o do agente). Causa provável, também para o sintoma de 18/11: **janela do app aberta
+  antes da troca para o banco**, sem recarregar (grava só na memória e diz "salvo"). Antes de
+  conferência, sempre recarregar a janela (o agente usa `navigate` no painel). Há dois
+  servidores da mesma pasta (5173 de outra conversa, 5174 do painel): ambos servem.
+- Falta do PRD: editar dia lançado, PDF do período, fotos no Storage.
 
 **Supabase ligado (18/11, noite — no GitHub, commit `572afb7`):**
 - Projeto `minha-obra`, 17 tabelas da fase 1 com CHECK, índices, RLS ligada e regra
@@ -262,7 +287,7 @@ Histórico vai para `docs/DIARIO.md` e para o Git.
 - Lista de presença em ordem alfabética (decisão do engenheiro, 18/11; teste em
   `tests/presenca-ordem.mjs`).
 - Atenção: o navegador do engenheiro fora do painel não chegou ao banco nos testes
-  de 18/11 (nenhum pedido no registro do Supabase). Causa não descoberta.
+  de 18/11. Causa provável achada em 20/11 (janela antiga sem recarregar; ver acima).
 - Revisão de código (18/11) consertada antes de subir: erro de leitura agora diz o
   motivo real (não só "confira a internet"); a presença relê o dia no banco antes de
   gravar (não troca o autor); etapa de nível 4 vira erro no leitor e a importação

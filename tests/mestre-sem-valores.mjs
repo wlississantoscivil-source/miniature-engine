@@ -70,7 +70,7 @@ conferir('Escola tem 4 lançamentos aguardando NF', painel.find((o) => o.id === 
 conferir('aviso do topo soma 6 lançamentos', (await dados.avisosPainel(wlisses)).data.compras_aguardando, 6)
 
 // Grade de módulos: cada pessoa só vê a pendência do que pode abrir
-conferir('mestre vê só a pendência de presença', Object.keys((await dados.pendenciasObra(carlos, 'o1')).data), ['presenca'])
+conferir('mestre vê só a pendência de presença e diário', Object.keys((await dados.pendenciasObra(carlos, 'o1')).data), ['presenca', 'diario'])
 conferir('auxiliar na UBS não vê presença nem equipe',
   Object.keys((await dados.pendenciasObra(ana, 'o2')).data).sort(), ['fluxo', 'fornecedores', 'lista', 'notas', 'orcado', 'pagamentos', 'resumo'])
 conferir('engenheiro vê a pendência de notas da Escola', (await dados.pendenciasObra(wlisses, 'o1')).data.notas.texto, '4 aguardando NF')

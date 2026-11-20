@@ -2,10 +2,16 @@ import { useState } from 'react'
 import { Menu, Topo, Carregando, Empty, useCarregar } from '../components/index.jsx'
 import { listarMinhasObras } from '../lib/dados.js'
 import Presenca from '../screens/obra-presenca.jsx'
+import Diario from '../screens/obra-diario.jsx'
 import Perfil from '../screens/perfil.jsx'
 
-// Casca do Mestre: Presença e Perfil (o Diário entra na Fase 2).
+// Casca do Mestre: Presença, Diário e Perfil. A obra escolhida vale para os dois módulos.
 // O mestre nunca chama função de dinheiro, e a camada de dados também recusa.
+const MODULOS = {
+  presenca: { titulo: 'Presença', Modulo: Presenca },
+  diario: { titulo: 'Diário de Obra', Modulo: Diario },
+}
+
 export default function AppMestre({ perfil, onSair }) {
   const [tela, setTela] = useState('presenca')
   const [obraId, setObraId] = useState(null)
@@ -13,6 +19,7 @@ export default function AppMestre({ perfil, onSair }) {
 
   const itens = [
     { id: 'presenca', rotulo: 'Presença', icone: 'presenca' },
+    { id: 'diario', rotulo: 'Diário', icone: 'diario' },
     { id: 'perfil', rotulo: 'Perfil', icone: 'user' },
   ]
 
@@ -24,7 +31,7 @@ export default function AppMestre({ perfil, onSair }) {
         if (!lista.length) {
           return (
             <>
-              <Topo titulo="Presença" />
+              <Topo titulo={MODULOS[tela].titulo} />
               <div className="ct"><Empty icone="obras" titulo="Você ainda não foi liberado em nenhuma obra." texto="Fale com o engenheiro." /></div>
             </>
           )
@@ -35,7 +42,8 @@ export default function AppMestre({ perfil, onSair }) {
             {lista.map((o) => <option key={o.id} value={o.id}>{o.nome}</option>)}
           </select>
         )
-        return <Presenca key={atual.id} perfil={perfil} obra={atual} seletor={seletor} />
+        const { Modulo } = MODULOS[tela]
+        return <Modulo key={atual.id} perfil={perfil} obra={atual} seletor={seletor} />
       }}</Carregando>
     )
   }

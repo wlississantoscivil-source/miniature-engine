@@ -12,7 +12,7 @@
 // verdade, cada pessoa só recebe do banco as linhas que pode ver.
 import * as exemplo from './mockData.js'
 import {
-  acessoNaObra, calcularDiarias, contarLancamentos, dentro, estadoPresencaHoje, gastosPorCategoria, hoje,
+  acessoNaObra, calcularDiarias, contarLancamentos, dentro, DIARIO_REPETIDO, diarioPendente, errosDiario, estadoPresencaHoje, gastosPorCategoria, hoje,
   momentoLocal, nfAtrasada, ordenarObras, plural, quinzenaDe, relatoriosDisponiveis, soma, somarAcessos, somarDias,
 } from './regras.js'
 import { completarCusto, religarEtapas, totaisItens } from './planilha.js'
@@ -35,7 +35,7 @@ const nomeDe = (id) => porId(db.profiles, id)?.nome || '—'
 const TABELAS = [
   'profiles', 'obras', 'membros_obra', 'fornecedores', 'planilhas_obra', 'etapas_obra', 'itens_contrato',
   'medicoes', 'fechamentos', 'pagamentos', 'notas_fiscais', 'compras', 'itens_lista_compra',
-  'funcionarios', 'presencas', 'diarias_funcionarios', 'pagamentos_diarias',
+  'funcionarios', 'presencas', 'diarias_funcionarios', 'pagamentos_diarias', 'diarios_obra', 'fotos',
 ]
 // Colunas com fuso (timestamptz): viram o horário local 'AAAA-MM-DDTHH:MM:SS'.
 // Colunas `date` chegam como 'AAAA-MM-DD' e ficam como estão (sem UTC).
@@ -89,6 +89,7 @@ function erroDoBanco(error, contexto) {
   console.error(`Minha Obra — ${contexto}:`, error)
   if (!error.code) return SEM_CONEXAO
   if (error.code === '23505') return 'Isso já existe (registro repetido).'
+  if (error.code === '23503') return 'Falta um cadastro ligado a isto (pessoa ou obra). Recarregue a página e tente de novo.'
   if (error.code === '23514') return 'O banco recusou um valor fora da lista permitida.'
   if (error.code === '42501') return 'O banco recusou: sem liberação para esta tabela.'
   return error.message || 'O banco recusou o pedido.'
@@ -670,10 +671,14 @@ export async function pendenciasObra(perfil, obraId, agora = new Date()) {
       : semNota ? { texto: `${semNota} sem nota`, tom: 'cr' } : { texto: 'Todos com nota', tom: 'ok' }
   }
   if (a.presenca) {
-    if (obra.status !== 'Em andamento') p.presenca = { texto: `Obra ${obra.status.toLowerCase()}`, tom: '' }
-    else {
+    const temDiarioHoje = db.diarios_obra.some((d) => d.obra_id === obraId && d.data === dia)
+    if (obra.status !== 'Em andamento') {
+      p.presenca = p.diario = { texto: `Obra ${obra.status.toLowerCase()}`, tom: '' }
+    } else {
       const est = estadoPresencaHoje(presencaLancadaEm(obraId, dia), agora.getHours())
       p.presenca = est === 'lancada' ? { texto: 'Lançada hoje', tom: 'ok' } : { texto: 'Presença não lançada', tom: est === 'atrasada' ? 'cr' : 'at' }
+      p.diario = diarioPendente(obra.status, temDiarioHoje, dia) ? { texto: 'Diário de hoje não lançado', tom: 'at' }
+        : { texto: temDiarioHoje ? 'Lançado hoje' : 'Clima, serviços e fotos', tom: '' }
     }
   }
   if (a.engenheiro) {
@@ -715,3 +720,64 @@ export async function relatoriosPara(perfil, obraId) {
 
 // Para o menu: a pessoa tem Financeiro em alguma obra?
 export const temFinanceiro = (perfil) => obrasComFinanceiro(perfil).length > 0
+
+// ─── Diário de obra (fase 2) ────────────────────────────────────────────────
+// No banco desde 20/11/2026 (`diarios_obra` e `fotos`). O efetivo não é guardado:
+// é a contagem de "Presente" na presença da mesma obra e data.
+// Fotos: a tabela guarda só o endereço (`arquivo_path`), mas o envio do arquivo
+// (Storage) ainda não existe. As fotos tiradas no app NÃO são gravadas: ficam só
+// na miniatura da tela até sair dela. As de exemplo vêm sem arquivo.
+const efetivoEm = (obraId, data) => {
+  const doDia = db.presencas.filter((p) => p.obra_id === obraId && p.data === data)
+  return doDia.length ? doDia.filter((p) => p.situacao === 'Presente').length : null
+}
+const diariosDaObra = (obraId) => db.diarios_obra.filter((d) => d.obra_id === obraId)
+
+export async function listarDiarios(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  if (!acesso(perfil, obraId).presenca) return falha(SEM_PERMISSAO)
+  const diarios = diariosDaObra(obraId)
+    .sort((a, b) => (a.data < b.data ? 1 : -1))
+    .map((d) => ({
+      ...d,
+      efetivo: efetivoEm(obraId, d.data),
+      autor: nomeDe(d.criado_por),
+      fotos: db.fotos.filter((f) => f.diario_id === d.id).map((f) => ({ id: f.id, legenda: f.legenda, url: f.arquivo_path || null })),
+    }))
+  return ok({ diarios, hoje: hoje() })
+}
+
+// Efetivo do dia, para o formulário mostrar antes de salvar (null = presença não lançada).
+export async function efetivoDoDia(perfil, obraId, data) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  if (!acesso(perfil, obraId).presenca) return falha(SEM_PERMISSAO)
+  return ok({ efetivo: efetivoEm(obraId, data) })
+}
+
+// As fotos não vão junto: ainda não há onde guardar o arquivo (ver acima).
+export async function salvarDiario(perfil, obraId, diario) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  if (!acesso(perfil, obraId).presenca) return falha(SEM_PERMISSAO)
+  const erros = errosDiario(perfil, diario, diariosDaObra(obraId))
+  if (Object.keys(erros).length) return falha(Object.values(erros)[0])
+  const linha = {
+    obra_id: obraId, data: diario.data, clima_manha: diario.clima_manha, clima_tarde: diario.clima_tarde,
+    servicos: diario.servicos.trim(), ocorrencias: (diario.ocorrencias || '').trim() || null, criado_por: perfil.id,
+  }
+  if (COM_BANCO) {
+    // A carga guardada pode ter até 15 s: outro aparelho pode ter lançado o mesmo dia.
+    // A chave única (obra + data) recusa, e a mensagem diz o porquê.
+    const supabase = await banco()
+    const { data: criado, error } = await supabase.from('diarios_obra').insert(linha).select('id').single()
+    esquecerCarga()
+    if (error?.code === '23505') return falha(DIARIO_REPETIDO)
+    if (error) return falha(erroDoBanco(error, 'salvar diário'))
+    return ok({ id: criado.id })
+  }
+  const id = `do-${obraId}-${diario.data}`
+  db.diarios_obra.push({ id, ...linha, created_at: momentoLocal() })
+  return ok({ id })
+}

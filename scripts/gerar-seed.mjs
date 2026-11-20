@@ -51,6 +51,8 @@ const TABELAS = [
   ['funcionarios', mock.funcionarios],
   ['diarias_funcionarios', comAutor(mock.diarias_funcionarios)],
   ['pagamentos_diarias', pagamentosDiarias],
+  ['diarios_obra', mock.diarios_obra],
+  ['fotos', mock.fotos],
 ]
 
 let sql = `-- Carga inicial do Minha Obra: os dados de exemplo de src/lib/mockData.js.
