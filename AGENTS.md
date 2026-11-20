@@ -254,7 +254,7 @@ Resposta curta, em português simples, sem jargão:
 Seção de passagem entre conversas: **substitua inteira** a cada parada, não acumule.
 Histórico vai para `docs/DIARIO.md` e para o Git.
 
-**Planejamento / Last Planner (20/11 — em construção, NÃO está no GitHub):**
+**Planejamento / Last Planner (20/11 — no GitHub, commit `6041d01`; revisão de código feita e consertada):**
 - Aba `planejamento` na grade da obra: `src/screens/obra-planejamento.jsx` (4 sub-abas,
   UMA lista de atividades para todas), regras em `src/lib/planejamento.js`, teste em
   `tests/planejamento.mjs`, `tests/restricoes.mjs` e `tests/semana.mjs`. As 4 abas prontas:
@@ -266,7 +266,7 @@ Histórico vai para `docs/DIARIO.md` e para o Git.
   do engenheiro, e revisão de código antes de subir (o diff toca em `dados.js`).
 - **Sem tabela no banco:** `dados.js` guarda na memória (some no F5); os exemplos ligam
   à obra do banco pelo nome. Decisões: EAP livre (não vem da planilha), até 3 níveis,
-  seg–sex sem feriados nacionais; mestre só vê e mexe no Curto prazo.
+  seg–sex, descontando os feriados nacionais (lista fixa até 2027; um teste quebra quando faltar o ano seguinte); mestre só vê e mexe no Curto prazo.
 
 **Diário de obra (20/11 — no GitHub, commit `472a888`):**
 - Tela `src/screens/obra-diario.jsx` na grade da obra (aba `diario`) e na barra do Mestre.
