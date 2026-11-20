@@ -254,7 +254,7 @@ Resposta curta, em português simples, sem jargão:
 Seção de passagem entre conversas: **substitua inteira** a cada parada, não acumule.
 Histórico vai para `docs/DIARIO.md` e para o Git.
 
-**Diário de obra (20/11, ainda NÃO foi para o Git):**
+**Diário de obra (20/11 — no GitHub, commit `472a888`):**
 - Tela `src/screens/obra-diario.jsx` na grade da obra (aba `diario`) e na barra do Mestre.
   Revisão de código feita e consertada (gravação otimista que reabre o rascunho se falhar,
   confirmação ao fechar, pendência só em dia útil).
@@ -309,7 +309,6 @@ Histórico vai para `docs/DIARIO.md` e para o Git.
 **Pela metade:**
 - Página de testes, Rodada 1: falta o item **"A data da importação é a de hoje, mesmo à
   noite"**, que só prova algo testado depois das 21h. Ler a marca na página antes de seguir.
-- Este trecho do AGENTS.md (Onde paramos e a nota de `timestamptz`) ainda não foi para o Git.
 
 **Revisão do módulo Planilha + Orçado + Fluxo (18/11), achados ainda NÃO consertados:**
 - Fora do padrão: custo sem BDI recalculado na tela (`obra-planilha.jsx`, ~linha 215, sem
