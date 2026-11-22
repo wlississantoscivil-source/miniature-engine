@@ -249,124 +249,111 @@ Resposta curta, em português simples, sem jargão:
 - o que não deu para conferir e por quê;
 - o que espera decisão dele — uma pergunta por vez, com recomendação.
 
-## Onde paramos (atualizado em 20/11/2026)
+## Onde paramos (atualizado em 22/11/2026)
 
 Seção de passagem entre conversas: **substitua inteira** a cada parada, não acumule.
 Histórico vai para `docs/DIARIO.md` e para o Git.
 
-**Planejamento / Last Planner (20/11):**
-- Aba `planejamento` na grade da obra: `src/screens/obra-planejamento.jsx` (4 sub-abas,
-  UMA lista para todas), regras em `src/lib/planejamento.js`, testes em
-  `tests/planejamento.mjs`, `tests/restricoes.mjs` e `tests/semana.mjs`. O Mestre tem
-  "Semana" na barra (só o curto prazo). No GitHub desde o commit `6041d01`.
-- **No banco (20/11, tarde):** `atividades_plano`, `restricoes_plano`, `subtarefas_plano`
-  (migration `20261120180000_planejamento.sql`, CHECK testados no SQL: 9 recusas certas)
-  e a regra aberta `…180100_dev_acesso_provisorio_planejamento.sql` (liberada com o ok do
-  engenheiro; a trava de segurança do Claude Code recusou na 1ª vez). Seed aplicado.
-  Conferido pelo agente numa aba de fundo do painel: mover no quadro gravou e sobreviveu
-  ao F5; subtarefa nova gravou com `obra_id` certo. Ficou no banco a subtarefa
-  **"Teste do agente (pode apagar)"** (Reboco interno) — apagar só com o ok do engenheiro.
-  **Ainda não está no GitHub** (diff toca em `dados.js` e migrations → revisão antes).
-- **Revisão de código do módulo inteiro (20/11, noite):** achados listados ao engenheiro, sem
-  consertar. 1º consertado: Subir/Descer da EAP agora é a função `mover_atividade` no banco
-  (migration `20261120190000`, uma gravação só, renumera as irmãs; mesma regra de
-  `moverEntreIrmas` em `planejamento.js`). Testado no SQL e no painel (desceu, conferiu
-  no banco, voltou). 2º consertado (22/11): **o mestre só mexe na semana atual**
-  (`podeMexerNaSemana` / `erroSemanaDoMestre` em `planejamento.js`, conferido nas 4
-  gravações da semana em `dados.js`; nas outras semanas a tela fica só para ver).
-  No passo 10 a RLS não sabe "semana atual": a tranca continua sendo `dados.js`.
-  3º consertado (22/11): **a causa da subtarefa guarda a semana** (coluna
-  `subtarefas_plano.semana_nao_realizado`, migration `20261122120000`; as 2 causas antigas
-  receberam a semana de 16/11). Gravação separada: `marcarSubtarefa` (feita) e
-  `subtarefaNaoRealizada` (causa + semana), como na atividade.
-  4º (22/11): **os pequenos de padrão** — regras que estavam na tela foram para
-  `planejamento.js` (`textoReal`, `podeMarcarNaoRealizado`, `temFilhosAtivos`,
-  `proximaOrdemDe`, `CONCLUIDO`); `DIAS_SEMANA` deriva de `SEMANA` (regras.js);
-  `dados.js` com `SUMIU`, `conferirPlano`/`conferirEap` e nomes claros; a tela com um
-  estado só (`plano`), `useAvisos` nos formulários, `VISUAL_TIPO` (classes `.tp-<nome>`),
-  confirmação ao tocar fora da restrição e o aviso do histórico corrigido.
-  **Ainda abertos da revisão:** tela para dias de trabalho/feriados; datas do seed fixas;
-  a subtarefa "Teste do agente (pode apagar)" no banco (esperando ok para apagar).
-  Os outros achados esperam a escolha do engenheiro.
-- Decisões: EAP livre (não vem da planilha), até 3 níveis, seg–sex descontando os
-  feriados nacionais (lista fixa até 2027; um teste quebra quando faltar o ano seguinte).
-- Fica para depois: baseline do cronograma, gráfico do PPC, histórico por semana,
-  tela para dias de trabalho/feriados, e no passo 10 as regras de verdade (mestre grava
-  só as colunas da semana e as subtarefas).
+### Pronto nesta conversa (20 a 22/11) — no GitHub, commits `6041d01` e `f8ab953`
 
-**Diário de obra (20/11 — no GitHub, commit `472a888`):**
-- Tela `src/screens/obra-diario.jsx` na grade da obra (aba `diario`) e na barra do Mestre.
-  Revisão de código feita e consertada (gravação otimista que reabre o rascunho se falhar,
-  confirmação ao fechar, pendência só em dia útil).
-- Banco: migrations `20261120120000_diario_obra.sql` (tabelas, CHECK do clima, um por dia,
-  RLS, GRANT) e `…120100_dev_acesso_provisorio_diario.sql` (regra aberta até o passo 10).
-  Testado no SQL: clima "Sol" recusado (23514), dia repetido recusado (23505). Seed do Diário
-  aplicado (7 diários, 5 fotos sem arquivo); o `supabase-seed.sql` foi refeito com ele.
-- `npm run check` em zero. Conferência no painel Browser (agente, 20/11 10:27): diário do
-  Carlos gravou em `diarios_obra` com `obra_id` da Escola Vila Nova, sobreviveu ao F5, e o
-  segundo do mesmo dia é avisado na hora. O teste do agente foi apagado depois (com o ok do engenheiro).
-- Conferência do engenheiro (20/11 10:31, painel Browser): diário do Joaquim no Refeitório
-  gravou com o `obra_id` da obra escolhida no seletor. Ficou no banco.
-- A 1ª tentativa dele não mandou nenhum pedido ao banco (registro do Supabase: um só POST no
-  dia, o do agente). Causa provável, também para o sintoma de 18/11: **janela do app aberta
-  antes da troca para o banco**, sem recarregar (grava só na memória e diz "salvo"). Antes de
-  conferência, sempre recarregar a janela (o agente usa `navigate` no painel). Há dois
-  servidores da mesma pasta (5173 de outra conversa, 5174 do painel): ambos servem.
-- Falta do PRD: editar dia lançado, PDF do período, fotos no Storage.
+**Módulo Planejamento (Last Planner)**, aba `planejamento` na grade da obra:
+- **Onde está:**
+  - `src/screens/obra-planejamento.jsx`: 4 sub-abas com UM estado só (`plano`).
+  - `src/lib/planejamento.js`: as regras.
+  - `src/lib/dados.js`: seção Planejamento, no fim do arquivo.
+  - Testes: `tests/planejamento.mjs`, `tests/restricoes.mjs`, `tests/semana.mjs`.
+- **As 4 abas:**
+  - **EAP**: código automático, até 3 níveis, subir/descer, arquivar.
+  - **Longo prazo**: barras em CSS por semana ou mês, previsto x real; lista no celular.
+  - **Médio prazo**: restrições por semana (3 a 6), 7 tipos, setas, filtros.
+  - **Curto prazo**: quadro A fazer / Em andamento / Concluído, checklist, "Não realizado"
+    com causa raiz (atividade e subtarefa) e PPC.
+- **Mestre:** tem "Semana" na barra (só o curto prazo) e **só mexe na semana atual**.
+  As outras semanas ele vê, sem mudar; quem tranca é `dados.js` (`erroSemanaDoMestre`).
+- **No banco** (`banco-resumo.md` tem o mapa, agora com 22 tabelas):
+  - Tabelas `atividades_plano`, `restricoes_plano`, `subtarefas_plano`, nas migrations
+    `20261120180000` e `20261122120000`, com CHECK (testados no SQL), RLS e GRANT só para
+    `authenticated`.
+  - Função `mover_atividade` (`20261120190000`): Subir/Descer numa gravação só; renumera as
+    irmãs. É a mesma regra de `moverEntreIrmas`: mudou lá, muda cá.
+  - Regra aberta de modo desenvolvimento para `anon` (`…180100` e `…190100`), autorizada pelo
+    engenheiro, que sai no passo 10 com as outras. A trava de segurança do Claude Code
+    recusou na 1ª vez; só foi aplicada depois do "sim" dele.
+  - Seed aplicado. Gravar sobrevive ao F5, conferido no banco.
+- **Revisão de código** do módulo (20/11): os 4 consertos estão feitos e o engenheiro conferiu
+  ("funcionou", 22/11):
+  1. Subir/Descer não deixa mais a ordem pela metade.
+  2. O mestre só mexe na semana atual.
+  3. A causa da subtarefa guarda a semana (`subtarefas_plano.semana_nao_realizado`).
+  4. Os pequenos de padrão.
+- **Decisões do engenheiro:** EAP livre (não vem da planilha); seg–sex descontando os
+  feriados nacionais (lista fixa até 2027; `tests/planejamento.mjs` quebra quando faltar o
+  ano seguinte); cor e ícone por tipo de restrição (pedido dele, contra a regra visual).
 
-**Supabase ligado (18/11, noite — no GitHub, commit `572afb7`):**
-- Projeto `minha-obra`, 17 tabelas da fase 1 com CHECK, índices, RLS ligada e regra
-  provisória aberta (`dev_provisorio`); seed carregado (865 linhas); `USAR_MOCK = false`.
-  Mapa e roteiro do passo 10 em `banco-resumo.md`.
-- Conferido pelo agente: painel do engenheiro bate com o mock; presença gravou na
-  tabela certa com `obra_id` e hora local (teste desfeito depois).
-- Conferência feita (agente no painel Browser, engenheiro assistindo): presença do
-  Carlos na Escola Vila Nova gravou 16 linhas com `obra_id` e sobreviveu ao F5; criar
-  conta gravou `Pendente`; email repetido (em maiúsculas) recusado com aviso.
-  Ficaram no banco: essa presença de 18/11 e a conta "Teste do Banco".
-- Lista de presença em ordem alfabética (decisão do engenheiro, 18/11; teste em
-  `tests/presenca-ordem.mjs`).
-- Atenção: o navegador do engenheiro fora do painel não chegou ao banco nos testes
-  de 18/11. Causa provável achada em 20/11 (janela antiga sem recarregar; ver acima).
-- Revisão de código (18/11) consertada antes de subir: erro de leitura agora diz o
-  motivo real (não só "confira a internet"); a presença relê o dia no banco antes de
-  gravar (não troca o autor); etapa de nível 4 vira erro no leitor e a importação
-  recusa planilha com erros (testes em `tests/planilha.mjs`).
-- Revisão, achados que ficaram para depois:
-  - `notas_fiscais.arquivo_path` está opcional (PRD pede obrigatório) até o Storage entrar.
-  - `importar_planilha` e `criado_por` recebem o autor da tela; no passo 10, `auth.uid()`.
-  - A tela de presença espera o banco responder antes de confirmar (não é otimista).
-  - O seed não leva `medicoes` (o mock está vazio hoje).
-  - A lista das 17 tabelas se repete em `dados.js`, na migration dev e no `gerar-seed.mjs`;
-    `const semBanco = await pronto()` se repete em toda função de `dados.js`.
+### Pela metade / pendente
 
-**Pronto antes (no GitHub, commit `f87e154`):**
-- Planilha da licitação: o total soma a coluna Total do arquivo (`totaisItens` em
-  `planilha.js`; `itens_contrato.total` no PRD-BACKEND). Testado e aprovado pelo engenheiro.
-- Data da importação no horário local (`momentoLocal` em `regras.js`).
-- Página de testes no ar (link na seção "Checklist de testes vivo").
+- **Os consertos do commit `f8ab953` não passaram pela revisão de código** que este arquivo
+  pede antes de subir (`dados.js` e migrations). O engenheiro mandou guardar assim. **Rodar
+  `/code-review` desde `d2d3ef3` antes da próxima mudança no módulo.**
+- **Dado de teste no banco:** a subtarefa **"Teste do agente (pode apagar)"** (Reboco interno,
+  Escola Vila Nova). Apagar só com o ok do engenheiro.
+- **Ainda em aberto da revisão do Planejamento:**
+  - Não há tela para configurar dias de trabalho e feriados. O pedido dizia "pode ser
+    simples"; hoje é constante (`CALENDARIO_PADRAO`).
+  - As datas de exemplo no banco ficaram fixas em 20/11: com o tempo, a atividade
+    acumulada, o "não realizado desta semana" e o PPC de exemplo deixam de aparecer.
+  - Extras que não foram pedidos, mas ficaram: subir/descer, editar/reabrir restrição,
+    os números do topo do longo prazo e o resumo de causas no PPC.
+- **Planejamento, para depois:** baseline do cronograma, gráfico do PPC por semana e
+  histórico por semana (hoje a semana passada mostra a situação de hoje).
+- **No passo 10 (login):**
+  - Regras de verdade do Planejamento: o mestre grava só as colunas da semana e as
+    subtarefas; a RLS não sabe qual é a "semana atual", então essa parte continua em `dados.js`.
+  - `revoke` de `anon` também em `mover_atividade`.
+- **Diário (de antes):** falta editar dia lançado, PDF do período e fotos no Storage.
+- **Página de testes, Rodada 1:** falta o item "A data da importação é a de hoje, mesmo à
+  noite", que só prova algo testado depois das 21h. Ler a marca na página antes de seguir.
+- **Revisão de 18/11 do Supabase, deixado para depois:**
+  - `notas_fiscais.arquivo_path` está opcional até o Storage entrar.
+  - `criado_por` vem da tela; no passo 10 vira `auth.uid()`.
+  - A presença não é otimista.
+  - O seed não leva `medicoes`.
+  - A lista de tabelas se repete em `dados.js`, na migration dev e em `gerar-seed.mjs`.
+- **Revisão do módulo Planilha + Orçado + Fluxo (18/11), ainda NÃO consertada:**
+  - **Fora do padrão:**
+    - custo sem BDI recalculado na tela (`obra-planilha.jsx`);
+    - "pode confirmar" decidido na tela, e `importarPlanilha` não confere `leitura.erros`;
+    - `MESES` duplicado (`orcamento.js` e `regras.js`);
+    - cores fora da regra visual;
+    - "Estourou -100%" com orçado 0;
+    - quem só tem Medição recebe R$.
+  - **Faltando do PRD:**
+    - campo Etapa na compra;
+    - tocar na etapa abre as compras dela;
+    - % de BDI nos Dados da obra;
+    - baixar o arquivo original;
+    - subtotal por etapa;
+    - perguntar a aba da planilha;
+    - diferença total em %;
+    - "Trocar planilha" desligado com aviso.
+  - **Parece errado:**
+    - saldo de cada mês vermelho no Fluxo;
+    - "a pagar" como compras − pagamentos;
+    - âmbar em 90% exatos;
+    - etapa de nível 4 aceita.
+  - **Decisão pendente:** "Dentro do orçado" em verde (PRD) × regra visual.
 
-**Pela metade:**
-- Página de testes, Rodada 1: falta o item **"A data da importação é a de hoje, mesmo à
-  noite"**, que só prova algo testado depois das 21h. Ler a marca na página antes de seguir.
+### Armadilhas lembradas
 
-**Revisão do módulo Planilha + Orçado + Fluxo (18/11), achados ainda NÃO consertados:**
-- Fora do padrão: custo sem BDI recalculado na tela (`obra-planilha.jsx`, ~linha 215, sem
-  `centavos`); "pode confirmar" decidido na tela e `importarPlanilha` não confere
-  `leitura.erros`; `MESES` duplicado (`orcamento.js` e `regras.js`); cores fora da regra
-  visual (verde/âmbar em coisa em dia no Orçado, Planilha e Fluxo; "mês atual" em âmbar);
-  fonte de números trocada em alguns lugares; "Estourou -100%" quando a etapa tem orçado 0;
-  quem só tem Medição recebe R$ (sem teste).
-- Faltando do PRD: campo Etapa na compra; tocar na etapa abrir as compras dela; campo
-  % de BDI nos Dados da obra; botão "Baixar o arquivo original" e subtotal por etapa;
-  perguntar a aba quando a planilha tem várias; diferença total em %; "Trocar planilha"
-  desligado com aviso (hoje some); dados de exemplo sem nenhuma etapa estourada.
-- Parece errado: saldo de cada mês vermelho no Fluxo (devia ser só o acumulado); "a pagar"
-  como compras − pagamentos; âmbar em 90% exatos ("acima de 90%"); etapa de nível 4 aceita.
-- **Decisão pendente do engenheiro:** "Dentro do orçado" em verde (PRD) × regra visual
-  (o que está em dia fica neutro).
+- **Antes de conferir no navegador, recarregue a janela.** Janela aberta antes de uma mudança
+  grava só na memória e diz "salvo".
+- **O app roda em `localhost:5173`** (o painel Browser reabriu nessa porta em 22/11).
+  Quando o engenheiro está usando a aba da frente, o agente testa numa aba de fundo do painel.
 
-**Próximo passo:** terminar a conferência do banco com o engenheiro. Depois, ler a página
-de testes e perguntar ao engenheiro qual achado da
-revisão consertar primeiro, com a recomendação: **o "Estourou -100%"** e **a
-importação conferir os erros da planilha** (erros de conta que não aparecem até dar errado).
+### Próximo passo
+
+1. Rodar `/code-review` sobre o que mudou desde `d2d3ef3`, consertar o que ela achar e subir.
+2. Perguntar ao engenheiro se apaga a subtarefa "Teste do agente (pode apagar)".
+3. Depois, perguntar qual frente seguir. Recomendação: da revisão de 18/11 da Planilha,
+   **o "Estourou -100%"** e **a importação conferir os erros da planilha** (erros de conta
+   que não aparecem até dar errado).
