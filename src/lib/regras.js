@@ -31,7 +31,7 @@ export const somarDias = (iso, n) => {
 export const diasEntre = (de, ate) => Math.round((paraData(ate) - paraData(de)) / 86400000)
 export const fmtData = (iso) => (iso ? iso.split('-').reverse().join('/') : '')
 export const fmtDiaMes = (iso) => (iso ? fmtData(iso).slice(0, 5) : '')
-const SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
+export const SEMANA = ['Domingo', 'Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado']
 export const diaDaSemana = (iso) => SEMANA[paraData(iso).getDay()]
 const MESES = ['jan', 'fev', 'mar', 'abr', 'mai', 'jun', 'jul', 'ago', 'set', 'out', 'nov', 'dez']
 

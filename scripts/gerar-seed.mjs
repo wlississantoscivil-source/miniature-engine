@@ -53,6 +53,10 @@ const TABELAS = [
   ['pagamentos_diarias', pagamentosDiarias],
   ['diarios_obra', mock.diarios_obra],
   ['fotos', mock.fotos],
+  // Planejamento: datas em relação ao dia em que o seed foi gerado (como as presenças).
+  ['atividades_plano', mock.atividades_plano],
+  ['restricoes_plano', mock.restricoes_plano],
+  ['subtarefas_plano', mock.subtarefas_plano],
 ]
 
 let sql = `-- Carga inicial do Minha Obra: os dados de exemplo de src/lib/mockData.js.

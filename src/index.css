@@ -546,13 +546,13 @@ button.crono-nome:hover .crono-tit{text-decoration:underline}
 .look-tipos button .i{width:16px;height:16px}
 .look-tipos button.on{background:var(--tp);color:var(--branco)}
 /* cor de cada tipo (texto escurecido para dar contraste em fundo claro) */
-.tp-0{--tp:#B5651D;--tp-tx:#8A4A12} /* Material */
-.tp-1{--tp:#7A5C99;--tp-tx:#5E4479} /* Mão de obra */
-.tp-2{--tp:#3E7C8C;--tp-tx:#2C5F6C} /* Método */
-.tp-3{--tp:#6B6B3A;--tp-tx:#53532B} /* Equipamento */
-.tp-4{--tp:#3F62A8;--tp-tx:#2F4C86} /* Projeto */
-.tp-5{--tp:#5B6770;--tp-tx:#454F57} /* Segurança (cinza-ardósia: o vermelho é só de atraso) */
-.tp-6{--tp:#4E7A3A;--tp-tx:#3B5E2B} /* Logística */
+.tp-material{--tp:#B5651D;--tp-tx:#8A4A12}
+.tp-mao-de-obra{--tp:#7A5C99;--tp-tx:#5E4479}
+.tp-metodo{--tp:#3E7C8C;--tp-tx:#2C5F6C}
+.tp-equipamento{--tp:#6B6B3A;--tp-tx:#53532B}
+.tp-projeto{--tp:#3F62A8;--tp-tx:#2F4C86}
+.tp-seguranca{--tp:#5B6770;--tp-tx:#454F57} /* cinza-ardósia: o vermelho é só de atraso */
+.tp-logistica{--tp:#8A5A6A;--tp-tx:#6E4655} /* não usa o verde do "em dia" */
 
 /* planejamento: curto prazo (quadro da semana + PPC) */
 .ppc{display:flex;flex-direction:column;gap:4px}

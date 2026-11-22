@@ -1,7 +1,7 @@
 // Planejamento: código automático da EAP, dias úteis, validação, permissões e
 // troca de obra (cada obra vê só a sua EAP).
 import * as dados from '../src/lib/dados.js'
-import { diasUteis, ehDiaUtil, erroDesarquivar, erroProgresso, FERIADOS_NACIONAIS, tomReal, escalaCronograma, proximoDiaUtil, errosAtividade, montarEap, paisPossiveis, progressoPrevisto, resumoPrazo, situacaoPrazo, statusPeloProgresso, trocarOrdem } from '../src/lib/planejamento.js'
+import { podeMarcarNaoRealizado, proximaOrdemDe, temFilhosAtivos, textoReal, semanaDe, diasUteis, ehDiaUtil, erroDesarquivar, erroProgresso, FERIADOS_NACIONAIS, tomReal, escalaCronograma, proximoDiaUtil, errosAtividade, montarEap, paisPossiveis, progressoPrevisto, resumoPrazo, situacaoPrazo, statusPeloProgresso, moverEntreIrmas } from '../src/lib/planejamento.js'
 
 let passou = 0
 let total = 0
@@ -55,8 +55,13 @@ conferir('pai com filhos não cobra datas', errosAtividade({ titulo: 'A', inicio
 conferir('não aceita nível 4', !!errosAtividade({ titulo: 'X', inicio: '2026-11-23', fim: '2026-11-27', pai_id: 'A11' }, base).pai_id, true)
 
 // ─── Subir e descer ─────────────────────────────────────────────────────────
-conferir('descer A troca com B', trocarOrdem(base, 'A', 1), [{ id: 'A', ordem: 2 }, { id: 'B', ordem: 1 }])
-conferir('subir o primeiro não faz nada', trocarOrdem(base, 'A', -1), [])
+conferir('descer A troca com B', moverEntreIrmas(base, 'A', 1), [{ id: 'B', ordem: 1 }, { id: 'A', ordem: 2 }])
+conferir('subir o primeiro não faz nada', moverEntreIrmas(base, 'A', -1), [])
+// Revisão de 20/11: ordem repetida (gravação pela metade) travava o Subir/Descer.
+const repetida = [a('X', null, 1), a('Y', null, 1), a('Z', null, 1)]
+conferir('ordem repetida: desce e renumera (Y já era 1)', moverEntreIrmas(repetida, 'X', 1), [{ id: 'X', ordem: 2 }, { id: 'Z', ordem: 3 }])
+const comArq = [a('P', null, 1), a('Q', null, 2, { arquivada: true }), a('R', null, 3)]
+conferir('pula a irmã arquivada', moverEntreIrmas(comArq, 'P', 1), [{ id: 'R', ordem: 1 }, { id: 'P', ordem: 3 }])
 
 // ─── Longo prazo ────────────────────────────────────────────────────────────
 // 23 a 27/11 = 5 dias úteis. Na quarta 25, já passaram 2 (seg e ter) → 40%.
@@ -85,6 +90,13 @@ conferir('grupo arquivado pode voltar', erroDesarquivar(comPaiArquivado, 'A'), n
 conferir('KPI Real: âmbar só passando da folga de 10 pontos', [tomReal({ previsto: 50, real: 40 }), tomReal({ previsto: 50, real: 39 })], ['', 'at'])
 // A lista de feriados é fixa: este teste quebra no ano em que ela precisar de mais um ano.
 conferir('feriados cobrem o ano que vem', FERIADOS_NACIONAIS.some((f) => f.startsWith(String(new Date().getFullYear() + 1))), true)
+
+// Regras que saíram da tela na revisão de 20/11
+conferir('texto do Real combina com a cor', [textoReal({ previsto: 40, real: 50 }), textoReal({ previsto: 50, real: 45 }), textoReal({ previsto: 50, real: 39 })], ['em dia', '5 pontos abaixo, dentro da folga', '11 pontos abaixo'])
+conferir('grupo = tem filho não arquivado', [temFilhosAtivos(base, 'A'), temFilhosAtivos(base, 'B'), temFilhosAtivos(base.map((x) => (x.id === 'A11' ? { ...x, arquivada: true } : x)), 'A1')], [true, false, false])
+conferir('concluída não pode ser "não realizado"', [podeMarcarNaoRealizado({ status: 'Concluído' }), podeMarcarNaoRealizado({ status: 'Em andamento' }), podeMarcarNaoRealizado({})], [false, true, true])
+conferir('próxima ordem vai para o fim', [proximaOrdemDe([]), proximaOrdemDe([{ ordem: 2 }, { ordem: 5 }])], [1, 6])
+conferir('semana começa na segunda (domingo é o último dia)', [semanaDe('2026-11-22'), semanaDe('2026-11-23')], ['2026-11-16', '2026-11-23'])
 
 // ─── Camada de dados: troca de obra e permissões ────────────────────────────
 const perfis = (await dados.listarPerfisDeExemplo()).data

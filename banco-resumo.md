@@ -16,8 +16,11 @@
 
 Toda tabela tem a RLS (a tranca por linha) **ligada**, mas com uma regra provisória
 chamada `dev_provisorio` que **libera tudo para todo mundo**, inclusive para quem não fez
-login. Está nas migrations `20261118200200_dev_acesso_provisorio.sql` e
-`20261120120100_dev_acesso_provisorio_diario.sql` (esta, só para `diarios_obra` e `fotos`).
+login. Está nas migrations `20261118200200_dev_acesso_provisorio.sql`,
+`20261120120100_dev_acesso_provisorio_diario.sql` (só `diarios_obra` e `fotos`) e
+`20261120180100_dev_acesso_provisorio_planejamento.sql` (as 3 do Planejamento, liberada com o ok do engenheiro em 20/11).
+A função `mover_atividade` (Subir/Descer da EAP, numa gravação só) também está aberta para
+`anon` em `20261120190100_dev_acesso_provisorio_mover_atividade.sql`: no passo 10, `revoke execute … from anon`.
 
 Só serve porque o app roda **apenas no computador do engenheiro**, com dados de exemplo.
 **Não publicar na Vercel assim.** No passo 10:
@@ -25,7 +28,7 @@ Só serve porque o app roda **apenas no computador do engenheiro**, com dados de
 1. Ligar `profiles` ao login (`auth.users`) e criar o gatilho de cadastro (perfil nasce `Pendente`).
    Os perfis de exemplo já existem: o gatilho deve **trocar o id do perfil de mesmo email pelo
    id do login** — todas as tabelas acompanham sozinhas (`on update cascade`).
-2. Uma migration nova que apaga as regras `dev_provisorio` (das 19 tabelas), tira a liberação de `anon`
+2. Uma migration nova que apaga as regras `dev_provisorio` (das 22 tabelas), tira a liberação de `anon`
    (tabelas e a função `importar_planilha`) e cria as regras de verdade, por obra e por perfil
    (`PRD-BACKEND.md`, "Permissões"). O teste que prova: o mestre não lê nenhuma linha de compras.
 3. Preencher `criado_por` / `atualizado_por` pelo login (`auth.uid()`), e não pela tela.
@@ -33,7 +36,7 @@ Só serve porque o app roda **apenas no computador do engenheiro**, com dados de
    `diarios_obra` tem que deixar o autor ler o que acabou de gravar, senão a gravação dá certo e a
    tela mostra erro. O mesmo vale para `fotos` quando o Storage entrar.
 
-## As tabelas (19)
+## As tabelas (22)
 
 | Tabela | O que guarda | Exemplo hoje |
 |---|---|---|
@@ -56,6 +59,9 @@ Só serve porque o app roda **apenas no computador do engenheiro**, com dados de
 | `pagamentos_diarias` | Registro de que as diárias de uma obra numa quinzena foram pagas (total congelado) | 1 |
 | `diarios_obra` | O diário de obra: um por dia por obra, com clima de manhã e de tarde (`Bom`, `Nublado`, `Chuva`, `Impraticável`), serviços executados e ocorrências. O efetivo **não** é guardado: vem da contagem de `Presente` na presença do dia | 7 |
 | `fotos` | As fotos de cada diário: legenda e o endereço do arquivo (`arquivo_path`). **Hoje sem arquivo**: o Storage ainda não existe, e as fotos tiradas no app não são gravadas | 5 |
+| `atividades_plano` | A EAP do Planejamento: atividades em árvore (`pai_id`, até 3 níveis), datas, progresso real, coluna da semana (`A fazer`, `Em andamento`, `Concluído`), "não realizado" com causa e semana, arquivada. Pai e filho sempre da mesma obra (chave dupla `obra_id, id`) | 16 |
+| `restricoes_plano` | Restrições do médio prazo: o que impede uma atividade (`Material`, `Mão de obra`, `Método`, `Equipamento`, `Projeto`, `Segurança`, `Logística`), prazo, responsável (texto livre), resolvida | 4 |
+| `subtarefas_plano` | Checklist de cada atividade na semana: feita, ou não realizada com causa **e a semana** em que foi marcada (desde 22/11; a causa só conta naquela semana) | 9 |
 
 Ainda **não existem** (fase 3): `medicao_itens`. Nem os buckets de arquivo (Storage):
 quando entrar o bucket `fotos`, `fotos.arquivo_path` volta a ser obrigatório (PRD).

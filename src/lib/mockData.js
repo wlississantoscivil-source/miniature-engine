@@ -240,18 +240,18 @@ export const fotos = [
 ]
 
 // ─── Planejamento (EAP, cronograma, restrições e semana) ────────────────────
-// Ainda SEM tabela no banco: a camada de dados guarda isto só na memória (some no F5).
+// No banco: tabelas atividades_plano, restricoes_plano e subtarefas_plano (o seed vem daqui).
 // Datas em relação a hoje, para o cronograma e a semana atual sempre terem o que mostrar.
 // Todas as abas usam esta MESMA lista. Grupo (pai) não tem status nem datas próprias
 // que valham: datas e progresso vêm dos filhos (planejamento.js).
 // status (só nas atividades, não nos grupos): 'A fazer' · 'Em andamento' · 'Concluído'
 // (os nomes das colunas do quadro da semana). Concluído = 100%; A fazer = 0%.
 // causa_nao_realizado + semana_nao_realizado (segunda da semana): marcada "Não realizado" naquela semana.
-// Atividade "impedida" = tem restrição aberta (lista `restricoes`, abaixo).
+// Atividade "impedida" = tem restrição aberta (lista `restricoes_plano`, abaixo).
 const d = (n) => somarDias(HOJE, n)
 const grupo = (id, obra_id, ordem, titulo, de, ate) => ({ id, obra_id, pai_id: null, ordem, titulo, inicio: d(de), fim: d(ate), progresso: 0, status: null, causa_nao_realizado: null, semana_nao_realizado: null, arquivada: false })
 const ativ = (id, obra_id, pai_id, ordem, titulo, de, ate, progresso, status) => ({ id, obra_id, pai_id, ordem, titulo, inicio: d(de), fim: d(ate), progresso, status, causa_nao_realizado: null, semana_nao_realizado: null, arquivada: false })
-export const atividades = [
+export const atividades_plano = [
   // Escola Municipal Vila Nova (obra cheia): 5 grupos, 8 atividades.
   grupo('pa1', 'o1', 1, 'Demolição', -20, -12),
   ativ('pa2', 'o1', 'pa1', 1, 'Demolição do muro antigo e retirada do entulho', -20, -12, 100, 'Concluído'),
@@ -275,7 +275,7 @@ export const atividades = [
 
 // Restrições (impedimentos) do médio prazo. tipo: Material · Mão de obra · Método ·
 // Equipamento · Projeto · Segurança · Logística. A semana em que aparece = a do prazo.
-export const restricoes = [
+export const restricoes_plano = [
   { id: 'rs1', obra_id: 'o1', atividade_id: 'pa8', descricao: 'Caixa d’água de 5.000 L ainda não entregue pelo fornecedor', tipo: 'Material', prazo: d(3), responsavel: 'Ana', resolvida: false },
   { id: 'rs2', obra_id: 'o1', atividade_id: 'pa11', descricao: 'Revisão do projeto elétrico sem aprovação da fiscalização', tipo: 'Projeto', prazo: d(8), responsavel: 'Wlisses', resolvida: false },
   { id: 'rs3', obra_id: 'o1', atividade_id: 'pa5', descricao: 'Andaime para o pé-direito da sala 3', tipo: 'Equipamento', prazo: d(-2), responsavel: 'Carlos', resolvida: true },
@@ -283,8 +283,9 @@ export const restricoes = [
 ]
 
 // Subtarefas (checklist) das atividades, para o quadro da semana.
-const sub = (id, obra_id, atividade_id, ordem, titulo, feita, causa_nao_realizado = null) => ({ id, obra_id, atividade_id, ordem, titulo, feita, causa_nao_realizado })
-export const subtarefas = [
+// Causa de "não realizado" vale para a semana em que foi marcada (aqui: a atual).
+const sub = (id, obra_id, atividade_id, ordem, titulo, feita, causa_nao_realizado = null) => ({ id, obra_id, atividade_id, ordem, titulo, feita, causa_nao_realizado, semana_nao_realizado: causa_nao_realizado ? semanaDe(HOJE) : null })
+export const subtarefas_plano = [
   sub('st1', 'o1', 'pa5', 1, 'Chapisco das salas 1 e 2', true),
   sub('st2', 'o1', 'pa5', 2, 'Reboco da sala 1', true),
   sub('st3', 'o1', 'pa5', 3, 'Reboco da sala 2', false),

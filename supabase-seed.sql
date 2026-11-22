@@ -1,5 +1,5 @@
 -- Carga inicial do Minha Obra: os dados de exemplo de src/lib/mockData.js.
--- Gerado por scripts/gerar-seed.mjs em 20/11/2026. Não edite à mão: rode o script.
+-- Gerado por scripts/gerar-seed.mjs em 22/11/2026. Não edite à mão: rode o script.
 -- Pode rodar de novo sem duplicar (on conflict do nothing). Não apaga nada.
 begin;
 
@@ -191,31 +191,72 @@ on conflict do nothing;
 
 -- diarios_obra (7)
 insert into public.diarios_obra (id, obra_id, data, clima_manha, clima_tarde, servicos, ocorrencias, criado_por, created_at) values
-  (pg_temp.u('do1'), pg_temp.u('o1'), '2026-11-19', 'Bom', 'Bom', 'Alvenaria do bloco B, eixos 3 a 5
-Chapisco das paredes internas do bloco A', null, pg_temp.u('u-carlos'), '2026-11-19T17:10:00-03:00'),
-  (pg_temp.u('do2'), pg_temp.u('o1'), '2026-11-18', 'Nublado', 'Chuva', 'Reboco interno do bloco B (sala 3)
-Armação das vigas da cobertura', 'Chuva forte às 14h parou o reboco externo. Equipe passou para serviço interno.', pg_temp.u('u-carlos'), '2026-11-18T17:25:00-03:00'),
-  (pg_temp.u('do3'), pg_temp.u('o1'), '2026-11-17', 'Bom', 'Nublado', 'Concretagem das vigas do bloco B
-Limpeza do canteiro', 'Visita do fiscal da prefeitura às 10h, sem pendências.', pg_temp.u('u-carlos'), '2026-11-17T16:50:00-03:00'),
-  (pg_temp.u('do4'), pg_temp.u('o1'), '2026-11-16', 'Bom', 'Bom', 'Fôrmas das vigas do bloco B
-Assentamento de tubulação de esgoto', 'Cimento chegou com 1 dia de atraso.', pg_temp.u('u-carlos'), '2026-11-16T17:05:00-03:00'),
-  (pg_temp.u('do5'), pg_temp.u('o1'), '2026-11-13', 'Bom', 'Bom', 'Alvenaria do bloco B, eixos 1 a 3', null, pg_temp.u('u-carlos'), '2026-11-13T17:00:00-03:00'),
-  (pg_temp.u('do6'), pg_temp.u('o1'), '2026-11-12', 'Nublado', 'Nublado', 'Marcação da alvenaria do bloco B
-Recebimento de 8.000 blocos cerâmicos', null, pg_temp.u('u-wlisses'), '2026-11-12T18:30:00-03:00'),
-  (pg_temp.u('do7'), pg_temp.u('o2'), '2026-11-19', 'Bom', 'Nublado', 'Instalação elétrica dos consultórios
-Pintura da recepção (1ª demão)', null, pg_temp.u('u-joaquim'), '2026-11-19T16:40:00-03:00')
+  (pg_temp.u('do1'), pg_temp.u('o1'), '2026-11-20', 'Bom', 'Bom', 'Alvenaria do bloco B, eixos 3 a 5
+Chapisco das paredes internas do bloco A', null, pg_temp.u('u-carlos'), '2026-11-20T17:10:00-03:00'),
+  (pg_temp.u('do2'), pg_temp.u('o1'), '2026-11-19', 'Nublado', 'Chuva', 'Reboco interno do bloco B (sala 3)
+Armação das vigas da cobertura', 'Chuva forte às 14h parou o reboco externo. Equipe passou para serviço interno.', pg_temp.u('u-carlos'), '2026-11-19T17:25:00-03:00'),
+  (pg_temp.u('do3'), pg_temp.u('o1'), '2026-11-18', 'Bom', 'Nublado', 'Concretagem das vigas do bloco B
+Limpeza do canteiro', 'Visita do fiscal da prefeitura às 10h, sem pendências.', pg_temp.u('u-carlos'), '2026-11-18T16:50:00-03:00'),
+  (pg_temp.u('do4'), pg_temp.u('o1'), '2026-11-17', 'Bom', 'Bom', 'Fôrmas das vigas do bloco B
+Assentamento de tubulação de esgoto', 'Cimento chegou com 1 dia de atraso.', pg_temp.u('u-carlos'), '2026-11-17T17:05:00-03:00'),
+  (pg_temp.u('do5'), pg_temp.u('o1'), '2026-11-16', 'Bom', 'Bom', 'Alvenaria do bloco B, eixos 1 a 3', null, pg_temp.u('u-carlos'), '2026-11-16T17:00:00-03:00'),
+  (pg_temp.u('do6'), pg_temp.u('o1'), '2026-11-13', 'Nublado', 'Nublado', 'Marcação da alvenaria do bloco B
+Recebimento de 8.000 blocos cerâmicos', null, pg_temp.u('u-wlisses'), '2026-11-13T18:30:00-03:00'),
+  (pg_temp.u('do7'), pg_temp.u('o2'), '2026-11-20', 'Bom', 'Nublado', 'Instalação elétrica dos consultórios
+Pintura da recepção (1ª demão)', null, pg_temp.u('u-joaquim'), '2026-11-20T16:40:00-03:00')
 on conflict do nothing;
 
 -- fotos (5)
 insert into public.fotos (id, obra_id, diario_id, arquivo_path, legenda, criado_por, created_at) values
-  (pg_temp.u('fo1'), pg_temp.u('o1'), pg_temp.u('do1'), null, 'Bloco B, eixo 4', pg_temp.u('u-carlos'), '2026-11-19T15:02:00-03:00'),
-  (pg_temp.u('fo2'), pg_temp.u('o1'), pg_temp.u('do1'), null, 'Chapisco sala 2', pg_temp.u('u-carlos'), '2026-11-19T15:10:00-03:00'),
-  (pg_temp.u('fo3'), pg_temp.u('o1'), pg_temp.u('do2'), null, 'Chuva às 14h', pg_temp.u('u-carlos'), '2026-11-18T14:05:00-03:00'),
-  (pg_temp.u('fo4'), pg_temp.u('o1'), pg_temp.u('do2'), null, 'Armação das vigas', pg_temp.u('u-carlos'), '2026-11-18T11:30:00-03:00'),
-  (pg_temp.u('fo5'), pg_temp.u('o1'), pg_temp.u('do2'), null, null, pg_temp.u('u-carlos'), '2026-11-18T11:31:00-03:00')
+  (pg_temp.u('fo1'), pg_temp.u('o1'), pg_temp.u('do1'), null, 'Bloco B, eixo 4', pg_temp.u('u-carlos'), '2026-11-20T15:02:00-03:00'),
+  (pg_temp.u('fo2'), pg_temp.u('o1'), pg_temp.u('do1'), null, 'Chapisco sala 2', pg_temp.u('u-carlos'), '2026-11-20T15:10:00-03:00'),
+  (pg_temp.u('fo3'), pg_temp.u('o1'), pg_temp.u('do2'), null, 'Chuva às 14h', pg_temp.u('u-carlos'), '2026-11-19T14:05:00-03:00'),
+  (pg_temp.u('fo4'), pg_temp.u('o1'), pg_temp.u('do2'), null, 'Armação das vigas', pg_temp.u('u-carlos'), '2026-11-19T11:30:00-03:00'),
+  (pg_temp.u('fo5'), pg_temp.u('o1'), pg_temp.u('do2'), null, null, pg_temp.u('u-carlos'), '2026-11-19T11:31:00-03:00')
 on conflict do nothing;
 
--- presencas (809)
+-- atividades_plano (16)
+insert into public.atividades_plano (id, obra_id, pai_id, ordem, titulo, inicio, fim, progresso, status, causa_nao_realizado, semana_nao_realizado, arquivada) values
+  (pg_temp.u('pa1'), pg_temp.u('o1'), null, 1, 'Demolição', '2026-11-02', '2026-11-10', 0, null, null, null, false),
+  (pg_temp.u('pa2'), pg_temp.u('o1'), pg_temp.u('pa1'), 1, 'Demolição do muro antigo e retirada do entulho', '2026-11-02', '2026-11-10', 100, 'Concluído', null, null, false),
+  (pg_temp.u('pa3'), pg_temp.u('o1'), null, 2, 'Alvenaria e reboco', '2026-11-07', '2026-12-02', 0, null, null, null, false),
+  (pg_temp.u('pa4'), pg_temp.u('o1'), pg_temp.u('pa3'), 1, 'Alvenaria do bloco B', '2026-11-07', '2026-11-19', 80, 'Em andamento', 'Mão de obra', '2026-11-16', false),
+  (pg_temp.u('pa5'), pg_temp.u('o1'), pg_temp.u('pa3'), 2, 'Reboco interno das salas 1 a 4', '2026-11-18', '2026-12-02', 25, 'Em andamento', null, null, false),
+  (pg_temp.u('pa6'), pg_temp.u('o1'), null, 3, 'Hidráulica', '2026-11-14', '2026-12-04', 0, null, null, null, false),
+  (pg_temp.u('pa7'), pg_temp.u('o1'), pg_temp.u('pa6'), 1, 'Tubulação de esgoto', '2026-11-14', '2026-11-22', 100, 'Concluído', null, null, false),
+  (pg_temp.u('pa8'), pg_temp.u('o1'), pg_temp.u('pa6'), 2, 'Água fria e caixa d’água', '2026-11-20', '2026-12-04', 30, 'Em andamento', null, null, false),
+  (pg_temp.u('pa9'), pg_temp.u('o1'), null, 4, 'Elétrica', '2026-11-16', '2026-12-07', 0, null, null, null, false),
+  (pg_temp.u('pa10'), pg_temp.u('o1'), pg_temp.u('pa9'), 1, 'Eletrodutos embutidos', '2026-11-16', '2026-11-23', 100, 'Concluído', null, null, false),
+  (pg_temp.u('pa11'), pg_temp.u('o1'), pg_temp.u('pa9'), 2, 'Fiação e quadros', '2026-11-24', '2026-12-07', 0, 'A fazer', null, null, false),
+  (pg_temp.u('pa12'), pg_temp.u('o1'), null, 5, 'Acabamento', '2026-12-04', '2026-12-22', 0, null, null, null, false),
+  (pg_temp.u('pa13'), pg_temp.u('o1'), pg_temp.u('pa12'), 1, 'Piso cerâmico das salas', '2026-12-04', '2026-12-22', 0, 'A fazer', null, null, false),
+  (pg_temp.u('pb1'), pg_temp.u('o2'), null, 1, 'Instalações e pintura', '2026-11-16', '2026-12-12', 0, null, null, null, false),
+  (pg_temp.u('pb2'), pg_temp.u('o2'), pg_temp.u('pb1'), 1, 'Instalação elétrica dos consultórios', '2026-11-16', '2026-11-30', 35, 'Em andamento', null, null, false),
+  (pg_temp.u('pb3'), pg_temp.u('o2'), pg_temp.u('pb1'), 2, 'Pintura da recepção', '2026-11-24', '2026-12-12', 0, 'A fazer', null, null, false)
+on conflict do nothing;
+
+-- restricoes_plano (4)
+insert into public.restricoes_plano (id, obra_id, atividade_id, descricao, tipo, prazo, responsavel, resolvida) values
+  (pg_temp.u('rs1'), pg_temp.u('o1'), pg_temp.u('pa8'), 'Caixa d’água de 5.000 L ainda não entregue pelo fornecedor', 'Material', '2026-11-25', 'Ana', false),
+  (pg_temp.u('rs2'), pg_temp.u('o1'), pg_temp.u('pa11'), 'Revisão do projeto elétrico sem aprovação da fiscalização', 'Projeto', '2026-11-30', 'Wlisses', false),
+  (pg_temp.u('rs3'), pg_temp.u('o1'), pg_temp.u('pa5'), 'Andaime para o pé-direito da sala 3', 'Equipamento', '2026-11-20', 'Carlos', true),
+  (pg_temp.u('rs4'), pg_temp.u('o2'), pg_temp.u('pb3'), 'Tinta da cor do projeto em falta no fornecedor', 'Material', '2026-11-27', 'Ana', false)
+on conflict do nothing;
+
+-- subtarefas_plano (9)
+insert into public.subtarefas_plano (id, obra_id, atividade_id, ordem, titulo, feita, causa_nao_realizado, semana_nao_realizado) values
+  (pg_temp.u('st1'), pg_temp.u('o1'), pg_temp.u('pa5'), 1, 'Chapisco das salas 1 e 2', true, null, null),
+  (pg_temp.u('st2'), pg_temp.u('o1'), pg_temp.u('pa5'), 2, 'Reboco da sala 1', true, null, null),
+  (pg_temp.u('st3'), pg_temp.u('o1'), pg_temp.u('pa5'), 3, 'Reboco da sala 2', false, null, null),
+  (pg_temp.u('st4'), pg_temp.u('o1'), pg_temp.u('pa5'), 4, 'Reboco da sala 3', false, 'Equipamento', '2026-11-16'),
+  (pg_temp.u('st5'), pg_temp.u('o1'), pg_temp.u('pa8'), 1, 'Ramal de entrada da Compesa', true, null, null),
+  (pg_temp.u('st6'), pg_temp.u('o1'), pg_temp.u('pa8'), 2, 'Instalar a caixa d’água', false, 'Material', '2026-11-16'),
+  (pg_temp.u('st7'), pg_temp.u('o1'), pg_temp.u('pa8'), 3, 'Teste de estanqueidade', false, null, null),
+  (pg_temp.u('st8'), pg_temp.u('o2'), pg_temp.u('pb2'), 1, 'Tomadas do consultório 1', true, null, null),
+  (pg_temp.u('st9'), pg_temp.u('o2'), pg_temp.u('pb2'), 2, 'Quadro de distribuição', false, null, null)
+on conflict do nothing;
+
+-- presencas (832)
 insert into public.presencas (id, obra_id, funcionario_id, data, situacao, criado_por, created_at)
 select pg_temp.u('pr-' || eq.fs[i] || '-' || v.d), pg_temp.u(v.o), pg_temp.u(eq.fs[i]), v.d::date,
        case substr(v.s, i, 1) when 'P' then 'Presente' when 'F' then 'Falta' when 'A' then 'Atestado' else 'Folga' end,
@@ -296,7 +337,9 @@ from (values
   ('2026-11-19','o1','u-carlos','07:30','PPPPPPPPFPPPPPPP'),
   ('2026-11-19','o2','u-joaquim','07:30','PPAPPPPPP'),
   ('2026-11-19','o3','u-joaquim','07:30','PPPPPPF'),
-  ('2026-11-20','o2','u-joaquim','07:42','PPPPPPPPF')
+  ('2026-11-20','o1','u-carlos','07:30','PFPPPPPPPPPAPPPP'),
+  ('2026-11-20','o2','u-joaquim','07:30','PPPPPPPPF'),
+  ('2026-11-20','o3','u-joaquim','07:30','PPPPPPP')
 ) v(d, o, c, h, s)
 join (values
   ('o1', array['fu1','fu2','fu3','fu4','fu5','fu6','fu7','fu8','fu9','fu10','fu11','fu12','fu13','fu14','fu15','fu16']),

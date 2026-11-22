@@ -254,19 +254,45 @@ Resposta curta, em português simples, sem jargão:
 Seção de passagem entre conversas: **substitua inteira** a cada parada, não acumule.
 Histórico vai para `docs/DIARIO.md` e para o Git.
 
-**Planejamento / Last Planner (20/11 — no GitHub, commit `6041d01`; revisão de código feita e consertada):**
+**Planejamento / Last Planner (20/11):**
 - Aba `planejamento` na grade da obra: `src/screens/obra-planejamento.jsx` (4 sub-abas,
-  UMA lista de atividades para todas), regras em `src/lib/planejamento.js`, teste em
-  `tests/planejamento.mjs`, `tests/restricoes.mjs` e `tests/semana.mjs`. As 4 abas prontas:
-  **EAP**, **Longo prazo**, **Médio prazo** (restrições por semana) e **Curto prazo**
-  (quadro + checklist + "Não realizado" com causa + PPC). O Mestre tem "Semana" na barra
-  (só o curto prazo). Fica para depois: baseline do cronograma, gráfico do PPC ao longo
-  das semanas e histórico por semana (hoje a semana passada mostra a situação de hoje).
-- **Próximo passo do Planejamento:** tabelas no banco (migration + RLS + GRANT), com o ok
-  do engenheiro, e revisão de código antes de subir (o diff toca em `dados.js`).
-- **Sem tabela no banco:** `dados.js` guarda na memória (some no F5); os exemplos ligam
-  à obra do banco pelo nome. Decisões: EAP livre (não vem da planilha), até 3 níveis,
-  seg–sex, descontando os feriados nacionais (lista fixa até 2027; um teste quebra quando faltar o ano seguinte); mestre só vê e mexe no Curto prazo.
+  UMA lista para todas), regras em `src/lib/planejamento.js`, testes em
+  `tests/planejamento.mjs`, `tests/restricoes.mjs` e `tests/semana.mjs`. O Mestre tem
+  "Semana" na barra (só o curto prazo). No GitHub desde o commit `6041d01`.
+- **No banco (20/11, tarde):** `atividades_plano`, `restricoes_plano`, `subtarefas_plano`
+  (migration `20261120180000_planejamento.sql`, CHECK testados no SQL: 9 recusas certas)
+  e a regra aberta `…180100_dev_acesso_provisorio_planejamento.sql` (liberada com o ok do
+  engenheiro; a trava de segurança do Claude Code recusou na 1ª vez). Seed aplicado.
+  Conferido pelo agente numa aba de fundo do painel: mover no quadro gravou e sobreviveu
+  ao F5; subtarefa nova gravou com `obra_id` certo. Ficou no banco a subtarefa
+  **"Teste do agente (pode apagar)"** (Reboco interno) — apagar só com o ok do engenheiro.
+  **Ainda não está no GitHub** (diff toca em `dados.js` e migrations → revisão antes).
+- **Revisão de código do módulo inteiro (20/11, noite):** achados listados ao engenheiro, sem
+  consertar. 1º consertado: Subir/Descer da EAP agora é a função `mover_atividade` no banco
+  (migration `20261120190000`, uma gravação só, renumera as irmãs; mesma regra de
+  `moverEntreIrmas` em `planejamento.js`). Testado no SQL e no painel (desceu, conferiu
+  no banco, voltou). 2º consertado (22/11): **o mestre só mexe na semana atual**
+  (`podeMexerNaSemana` / `erroSemanaDoMestre` em `planejamento.js`, conferido nas 4
+  gravações da semana em `dados.js`; nas outras semanas a tela fica só para ver).
+  No passo 10 a RLS não sabe "semana atual": a tranca continua sendo `dados.js`.
+  3º consertado (22/11): **a causa da subtarefa guarda a semana** (coluna
+  `subtarefas_plano.semana_nao_realizado`, migration `20261122120000`; as 2 causas antigas
+  receberam a semana de 16/11). Gravação separada: `marcarSubtarefa` (feita) e
+  `subtarefaNaoRealizada` (causa + semana), como na atividade.
+  4º (22/11): **os pequenos de padrão** — regras que estavam na tela foram para
+  `planejamento.js` (`textoReal`, `podeMarcarNaoRealizado`, `temFilhosAtivos`,
+  `proximaOrdemDe`, `CONCLUIDO`); `DIAS_SEMANA` deriva de `SEMANA` (regras.js);
+  `dados.js` com `SUMIU`, `conferirPlano`/`conferirEap` e nomes claros; a tela com um
+  estado só (`plano`), `useAvisos` nos formulários, `VISUAL_TIPO` (classes `.tp-<nome>`),
+  confirmação ao tocar fora da restrição e o aviso do histórico corrigido.
+  **Ainda abertos da revisão:** tela para dias de trabalho/feriados; datas do seed fixas;
+  a subtarefa "Teste do agente (pode apagar)" no banco (esperando ok para apagar).
+  Os outros achados esperam a escolha do engenheiro.
+- Decisões: EAP livre (não vem da planilha), até 3 níveis, seg–sex descontando os
+  feriados nacionais (lista fixa até 2027; um teste quebra quando faltar o ano seguinte).
+- Fica para depois: baseline do cronograma, gráfico do PPC, histórico por semana,
+  tela para dias de trabalho/feriados, e no passo 10 as regras de verdade (mestre grava
+  só as colunas da semana e as subtarefas).
 
 **Diário de obra (20/11 — no GitHub, commit `472a888`):**
 - Tela `src/screens/obra-diario.jsx` na grade da obra (aba `diario`) e na barra do Mestre.

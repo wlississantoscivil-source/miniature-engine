@@ -1,4 +1,5 @@
 {
+  "atividades_plano": ["id", "obra_id", "pai_id", "ordem", "titulo", "inicio", "fim", "progresso", "status", "causa_nao_realizado", "semana_nao_realizado", "arquivada", "created_at", "updated_at"],
   "compras": ["id", "obra_id", "fornecedor_id", "data", "descricao", "categoria", "valor", "numero_pedido", "grupo_id", "etapa_id", "observacao", "quinzena_inicio", "status", "nota_fiscal_id", "fechamento_id", "criado_por", "atualizado_por", "created_at", "updated_at"],
   "diarias_funcionarios": ["id", "obra_id", "funcionario_id", "valor", "vigente_desde", "criado_por", "created_at"],
   "diarios_obra": ["id", "obra_id", "data", "clima_manha", "clima_tarde", "servicos", "ocorrencias", "criado_por", "atualizado_por", "created_at", "updated_at"],
@@ -17,5 +18,7 @@
   "pagamentos_diarias": ["id", "obra_id", "quinzena_inicio", "quinzena_fim", "valor_total", "data_pagamento", "forma", "observacao", "criado_por", "created_at"],
   "planilhas_obra": ["id", "obra_id", "bdi_percentual", "objeto", "referencia_precos", "total_geral_planilha", "total_sem_bdi_planilha", "arquivo_path", "arquivo_nome", "importada_em", "importada_por", "created_at", "updated_at"],
   "presencas": ["id", "obra_id", "funcionario_id", "data", "situacao", "criado_por", "atualizado_por", "created_at", "updated_at"],
-  "profiles": ["id", "nome", "email", "whatsapp", "role", "ativo", "created_at"]
+  "profiles": ["id", "nome", "email", "whatsapp", "role", "ativo", "created_at"],
+  "restricoes_plano": ["id", "obra_id", "atividade_id", "descricao", "tipo", "prazo", "responsavel", "resolvida", "created_at", "updated_at"],
+  "subtarefas_plano": ["id", "obra_id", "atividade_id", "ordem", "titulo", "feita", "causa_nao_realizado", "semana_nao_realizado", "created_at"]
 }

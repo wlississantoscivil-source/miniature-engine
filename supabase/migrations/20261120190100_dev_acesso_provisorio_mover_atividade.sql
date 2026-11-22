@@ -1,0 +1,11 @@
+-- ============================================================
+-- ⚠ TEMPORÁRIO — MODO DESENVOLVIMENTO. publico-de-proposito
+--
+-- Igual ao que 20261118200200_dev_acesso_provisorio.sql faz com
+-- importar_planilha: sem login, o navegador chama o banco como "anon".
+-- A função é security invoker, então só alcança o que a regra provisória
+-- das tabelas (dev_provisorio) já libera.
+--
+-- NO PASSO 10: revoke execute on function public.mover_atividade(uuid, integer) from anon;
+-- ============================================================
+grant execute on function public.mover_atividade(uuid, integer) to anon;

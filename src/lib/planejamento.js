@@ -1,12 +1,13 @@
 // Planejamento da obra (Last Planner): EAP, longo, médio e curto prazo.
 // Regras puras: código automático da EAP, árvore, dias úteis, validação.
 // Sem React, sem banco, sem `window`. Teste em tests/planejamento.mjs.
-import { diaDaSemana, diasEntre, fmtDiaMes, somarDias } from './regras.js'
+import { diaDaSemana, diasEntre, fmtDiaMes, plural, SEMANA, somarDias } from './regras.js'
 import { rotuloMes } from './orcamento.js'
 
 // ─── Calendário de trabalho (dias úteis) ────────────────────────────────────
 // Dias de trabalho pelo nome do dia (como `diaDaSemana` devolve).
-const DIAS_SEMANA = ['Segunda', 'Terça', 'Quarta', 'Quinta', 'Sexta', 'Sábado', 'Domingo']
+// A semana da obra começa na segunda: a mesma lista de regras.js, girada.
+const DIAS_SEMANA = [...SEMANA.slice(1), SEMANA[0]]
 // Feriados nacionais fixos de 2026 e 2027 (mais a Sexta-feira Santa).
 // ⚠ A lista acaba em 2027: antes de 2028, acrescente o ano (tests/planejamento.mjs avisa).
 // Ainda não há tela para feriado da cidade nem para mudar os dias de trabalho.
@@ -38,7 +39,11 @@ export const NIVEL_MAXIMO = 3
 // Atividade de verdade (não é grupo nem arquivada): a que entra no quadro e recebe restrição.
 export const ehFolha = (l) => !l.arquivada && l.filhos === 0 // como a planilha da licitação: 1 → 1.1 → 1.1.1
 
-const irmaos = (lista, paiId) => lista.filter((a) => (a.pai_id || null) === (paiId || null)).sort((a, b) => a.ordem - b.ordem)
+// Irmãs na ordem da EAP. Empate de `ordem` desempata pelo id, igual à função
+// mover_atividade do banco (order by ordem, id), para tela e banco verem a mesma ordem.
+const irmaos = (lista, paiId) => lista
+  .filter((a) => (a.pai_id || null) === (paiId || null))
+  .sort((a, b) => a.ordem - b.ordem || (a.id < b.id ? -1 : a.id > b.id ? 1 : 0))
 
 // Monta a EAP na ordem de leitura, com código, nível e o que vem dos filhos.
 // Atividade arquivada (ou dentro de uma arquivada) fica sem código e não
@@ -121,18 +126,28 @@ export function erroDesarquivar(atividades, id) {
 }
 
 // Próximo número de ordem entre os irmãos (vai para o fim da lista).
-export const proximaOrdem = (atividades, paiId) => Math.max(0, ...irmaos(atividades, paiId).map((a) => a.ordem)) + 1
+// Próximo número de uma lista com `ordem` (vai para o fim). Serve para atividade e subtarefa.
+export const proximaOrdemDe = (lista) => Math.max(0, ...lista.map((x) => x.ordem)) + 1
+export const proximaOrdem = (atividades, paiId) => proximaOrdemDe(irmaos(atividades, paiId))
+// É grupo? (tem subatividade não arquivada: datas e progresso vêm dos filhos)
+export const temFilhosAtivos = (atividades, id) => atividades.some((a) => a.pai_id === id && !a.arquivada)
 
-// Troca a atividade de lugar com a irmã de cima (-1) ou de baixo (+1), entre as ativas.
-// Devolve as duas linhas com a ordem nova, ou [] se já está na ponta.
-export function trocarOrdem(atividades, id, direcao) {
+// Sobe (-1) ou desce (+1) a atividade, pulando as irmãs arquivadas, e renumera
+// TODAS as irmãs 1, 2, 3… (o que também conserta ordem repetida).
+// Devolve só as linhas que mudam, ou [] se já está na ponta.
+// ⚠ Mesma regra da função `mover_atividade` do banco (migration 20261120190000):
+// mudou aqui, muda lá. No banco ela grava tudo de uma vez (ou nada).
+export function moverEntreIrmas(atividades, id, direcao) {
   const a = atividades.find((x) => x.id === id)
   if (!a) return []
-  const lado = irmaos(atividades, a.pai_id).filter((x) => !x.arquivada)
-  const k = lado.findIndex((x) => x.id === id)
-  const outra = lado[k + direcao]
-  if (!outra) return []
-  return [{ id: a.id, ordem: outra.ordem }, { id: outra.id, ordem: a.ordem }]
+  const todas = irmaos(atividades, a.pai_id)
+  const k = todas.findIndex((x) => x.id === id)
+  let j = k + direcao
+  while (todas[j]?.arquivada) j += direcao
+  if (!todas[j]) return []
+  const nova = [...todas]
+  ;[nova[k], nova[j]] = [nova[j], nova[k]]
+  return nova.map((x, i) => ({ id: x.id, ordem: i + 1 })).filter((x, i) => nova[i].ordem !== x.ordem)
 }
 
 // ─── Abas e permissões do módulo ────────────────────────────────────────────
@@ -171,6 +186,13 @@ export function situacaoPrazo(linha, dia, cal = CALENDARIO_PADRAO) {
 
 // Tom do "Real" da obra: âmbar só quando passa da folga abaixo do previsto.
 export const tomReal = ({ previsto, real }) => (previsto - real > TOLERANCIA_PREVISTO ? 'at' : '')
+// Frase do "Real" que combina com a cor: dentro da folga diz que está dentro da folga.
+export function textoReal({ previsto, real }) {
+  const abaixo = previsto - real
+  if (abaixo <= 0) return 'em dia'
+  const pontos = plural(abaixo, 'ponto abaixo', 'pontos abaixo')
+  return abaixo > TOLERANCIA_PREVISTO ? pontos : `${pontos}, dentro da folga`
+}
 
 // A obra inteira: média dos grupos principais pesada pelos dias úteis.
 export function resumoPrazo(linhas, dia, cal = CALENDARIO_PADRAO) {
@@ -223,11 +245,12 @@ export function erroProgresso(valor) {
 
 // ─── Status da semana (quadro do curto prazo) ───────────────────────────────
 export const STATUS_ATIVIDADE = ['A fazer', 'Em andamento', 'Concluído']
+export const CONCLUIDO = STATUS_ATIVIDADE[2]
 // Mudou o progresso: o status acompanha (100% = Concluído; começou = Em andamento).
 export function statusPeloProgresso(status, progresso) {
-  if (progresso >= 100) return 'Concluído'
-  if (progresso > 0) return 'Em andamento'
-  return status === 'Concluído' ? 'Em andamento' : status || STATUS_ATIVIDADE[0]
+  if (progresso >= 100) return CONCLUIDO
+  if (progresso > 0) return STATUS_ATIVIDADE[1]
+  return status === CONCLUIDO ? STATUS_ATIVIDADE[1] : status || STATUS_ATIVIDADE[0]
 }
 
 // ─── Médio prazo (lookahead): restrições por semana ─────────────────────────
@@ -321,14 +344,14 @@ export function atividadesDaSemana(linhas, semana) {
   const fim = somarDias(semana, 6)
   return linhas
     .filter(ehFolha)
-    .map((l) => ({ ...l, acumulada: l.fim < semana && l.status !== 'Concluído' }))
+    .map((l) => ({ ...l, acumulada: l.fim < semana && l.status !== CONCLUIDO }))
     .filter((l) => (l.inicio <= fim && l.fim >= semana) || l.acumulada)
 }
 
 // PPC = Percentual do Plano Concluído: concluídas ÷ planejadas da semana × 100.
 export function ppcDaSemana(daSemana) {
   const total = daSemana.length
-  const concluidas = daSemana.filter((l) => l.status === 'Concluído').length
+  const concluidas = daSemana.filter((l) => l.status === CONCLUIDO).length
   return { total, concluidas, ppc: total ? Math.round((concluidas / total) * 100) : null }
 }
 // Tom do PPC: abaixo de 50% vermelho, abaixo de 80% âmbar; dali para cima, neutro.
@@ -339,7 +362,7 @@ export function causasDaSemana(daSemana, subtarefas, semana) {
   const ids = new Set(daSemana.map((l) => l.id))
   const causas = [
     ...daSemana.filter((l) => naoRealizadaNaSemana(l, semana)).map((l) => l.causa_nao_realizado),
-    ...subtarefas.filter((s) => ids.has(s.atividade_id) && !s.feita && s.causa_nao_realizado).map((s) => s.causa_nao_realizado),
+    ...subtarefas.filter((s) => ids.has(s.atividade_id) && !s.feita && naoRealizadaNaSemana(s, semana)).map((s) => s.causa_nao_realizado),
   ]
   const conta = {}
   for (const c of causas) conta[c] = (conta[c] || 0) + 1
@@ -348,14 +371,16 @@ export function causasDaSemana(daSemana, subtarefas, semana) {
 
 // Moveu no quadro: o progresso acompanha (Concluído = 100%; saiu de Concluído = deixa de ser 100%).
 export function progressoPeloStatus(status, progresso) {
-  if (status === 'Concluído') return 100
+  if (status === CONCLUIDO) return 100
   if (progresso < 100) return progresso
-  return status === 'Em andamento' ? 90 : 0
+  return status === STATUS_ATIVIDADE[1] ? 90 : 0
 }
 
 // Coluna do quadro em que a atividade está (sem status = a primeira, "A fazer").
 export const statusDe = (l) => l.status || STATUS_ATIVIDADE[0]
-// Foi marcada "Não realizado" NESTA semana?
+// Foi marcada "Não realizado" NESTA semana? (vale para atividade e para subtarefa)
+// Concluída não pode ser marcada "não realizado".
+export const podeMarcarNaoRealizado = (l) => statusDe(l) !== CONCLUIDO
 export const naoRealizadaNaSemana = (l, semana) => l.semana_nao_realizado === semana && !!l.causa_nao_realizado
 // Checklist de uma atividade, na ordem em que foi criado.
 export const subtarefasDe = (subtarefas, atividadeId) => subtarefas.filter((s) => s.atividade_id === atividadeId).sort((a, b) => a.ordem - b.ordem)
@@ -365,4 +390,17 @@ export function erroSubtarefa(titulo) {
   if (!titulo?.trim()) return 'Diga o que precisa ser feito.'
   if (titulo.trim().length > 120) return 'Use até 120 letras.'
   return null
+}
+
+// ─── Quem mexe em qual semana ───────────────────────────────────────────────
+// O mestre só mexe na semana ATUAL (as outras ele vê, sem mudar): é o combinado
+// "o mestre trabalha a semana". Engenheiro e auxiliar mexem em qualquer semana.
+export const podeMexerNaSemana = (role, semana, atual) => role !== 'Mestre' || semana === atual
+export const SO_SEMANA_ATUAL = 'O mestre só mexe nas atividades da semana atual.'
+// Para a camada de dados: a atividade está no quadro da semana atual?
+// (cruza a semana ou está acumulada — a mesma regra do quadro)
+export function erroSemanaDoMestre(role, linhas, atividadeId, dia) {
+  if (role !== 'Mestre') return null
+  const naSemana = atividadesDaSemana(linhas, semanaDe(dia)).some((l) => l.id === atividadeId)
+  return naSemana ? null : SO_SEMANA_ATUAL
 }

@@ -2,44 +2,34 @@ import { useEffect, useState } from 'react'
 import { Faixa, Kpi, Seg, Sheet, Tag, Topo, Empty, Icon, useCarregar, useToast } from '../components/index.jsx'
 import {
   arquivarAtividade, listarPlanejamento, marcarNaoRealizado, marcarSubtarefa, moverAtividade, moverNaSemana, moverRestricao, resolverRestricao, salvarAtividade,
-  salvarProgresso, salvarRestricao, salvarSubtarefa,
+  salvarProgresso, salvarRestricao, salvarSubtarefa, subtarefaNaoRealizada,
 } from '../lib/dados.js'
 import {
-  abasPlanejamento, atividadesDaSemana, CAUSAS_NAO_REALIZADO, causasDaSemana, diasUteis, ehFolha, erroCausa, erroDesarquivar, erroProgresso, errosAtividade,
-  errosRestricao, erroSubtarefa, escalaCronograma, montarEap, montarLookahead, naoRealizadaNaSemana, NIVEL_MAXIMO, paisPossiveis, podeVoltarSemana, ppcDaSemana,
-  prazoNovaRestricao, progressoPrevisto, proximoDiaUtil, restricaoVencida, restricoesAbertas, resumoPrazo, rotuloSemana, SEMANAS_LOOKAHEAD, semanaDe, situacaoPrazo,
-  statusDe, STATUS_ATIVIDADE, subtarefasDe, TIPOS_RESTRICAO, tomPpc, tomReal,
+  abasPlanejamento, atividadesDaSemana, CAUSAS_NAO_REALIZADO, causasDaSemana, CONCLUIDO, diasUteis, ehFolha, erroCausa, erroDesarquivar, erroProgresso,
+  errosAtividade, errosRestricao, erroSubtarefa, escalaCronograma, montarEap, montarLookahead, naoRealizadaNaSemana, NIVEL_MAXIMO, paisPossiveis,
+  podeMarcarNaoRealizado, podeMexerNaSemana, podeVoltarSemana, ppcDaSemana, prazoNovaRestricao, progressoPrevisto, proximoDiaUtil, restricaoVencida,
+  restricoesAbertas, resumoPrazo, rotuloSemana, SEMANAS_LOOKAHEAD, semanaDe, situacaoPrazo, statusDe, STATUS_ATIVIDADE, subtarefasDe, textoReal,
+  TIPOS_RESTRICAO, tomPpc, tomReal,
 } from '../lib/planejamento.js'
 import { fmtData, fmtDiaMes, hoje, plural, somarDias } from '../lib/regras.js'
 
 // Módulo Planejamento (Last Planner): EAP → Longo prazo → Médio prazo → Curto prazo.
 // REGRA DE OURO: as quatro abas leem e mudam a MESMA lista de atividades (e as
-// restrições ligadas a elas), que mora aqui. Toda gravação devolve as listas
-// inteiras da obra e `aplicar` troca esse estado de uma vez; nenhuma aba guarda cópia.
-// Ainda sem banco: a camada de dados guarda só na memória (some no F5).
+// restrições e subtarefas ligadas a elas), que mora aqui (`plano`). Toda gravação
+// devolve as listas inteiras da obra e `aplicar` troca o estado de uma vez; nenhuma aba guarda cópia.
+// Grava no banco (atividades_plano, restricoes_plano, subtarefas_plano) pela camada de dados.
 // Na barra do Mestre (sem `embutida`) só existe o Curto prazo, com o seletor de obra no topo.
 export default function Planejamento({ perfil, obra, sub, setSub, embutida, seletor }) {
   const dados = useCarregar(() => listarPlanejamento(perfil, obra.id), [obra.id])
-  const [atividades, setAtividades] = useState(null)
-  const [restricoes, setRestricoes] = useState([])
-  const [subtarefas, setSubtarefas] = useState([])
+  // { atividades, restricoes, subtarefas } da obra: o estado ÚNICO das quatro abas.
+  const [plano, aplicar] = useState(null)
   const [subLocal, setSubLocal] = useState(null)
   const trocarAba = setSub || setSubLocal
   const abas = abasPlanejamento(perfil.role)
   const pedida = setSub ? sub : subLocal
   const aba = abas.some((a) => a.id === pedida) ? pedida : abas[0].id
-  const aplicar = (data) => {
-    setAtividades(data.atividades)
-    setRestricoes(data.restricoes)
-    setSubtarefas(data.subtarefas)
-  }
 
-  useEffect(() => {
-    if (!dados.data) return
-    setAtividades(dados.data.atividades)
-    setRestricoes(dados.data.restricoes)
-    setSubtarefas(dados.data.subtarefas)
-  }, [dados.data])
+  useEffect(() => { if (dados.data) aplicar(dados.data) }, [dados.data])
 
   let corpo
   if (dados.erro) {
@@ -49,8 +39,9 @@ export default function Planejamento({ perfil, obra, sub, setSub, embutida, sele
         <button className="btn sec" onClick={dados.recarregar}><Icon n="repeat" />Tentar de novo</button>
       </div>
     )
-  } else if (!atividades) corpo = <div className="loading">Carregando…</div>
+  } else if (!plano) corpo = <div className="loading">Carregando…</div>
   else {
+    const { atividades, restricoes, subtarefas } = plano
     const comum = { perfil, obra, atividades, restricoes, subtarefas, aplicar, calendario: dados.data.calendario, podeEditar: dados.data.podeEditarEap }
     const irParaEap = () => trocarAba('eap')
     if (aba === 'eap') corpo = <AbaEap {...comum} />
@@ -62,7 +53,6 @@ export default function Planejamento({ perfil, obra, sub, setSub, embutida, sele
   const conteudo = (
     <div className="ct">
       <Faixa abas={abas} ativa={aba} onTroca={trocarAba} />
-      <div className="note">Planejamento ainda em teste: o que você mudar aqui não é guardado no banco e some ao recarregar a página.</div>
       {corpo}
     </div>
   )
@@ -92,6 +82,22 @@ function useGravar(aplicar) {
   return { ocupado, gravar }
 }
 
+// Texto da pergunta antes de descartar um formulário preenchido.
+const DESCARTAR = 'O que você preencheu será descartado. Sair mesmo assim?'
+
+// Avisos de formulário: um campo mostra o erro depois de mexido (ou dos que já
+// nascem preenchidos), e todos depois de tentar salvar.
+function useAvisos(erros, jaTocados) {
+  const [tocado, setTocado] = useState(jaTocados)
+  const [tentou, setTentou] = useState(false)
+  return {
+    aviso: (c) => ((tentou || tocado[c]) && erros[c]) || null,
+    tocar: (c) => setTocado((t) => ({ ...t, [c]: true })),
+    tentar: () => { setTentou(true); return !Object.keys(erros).length },
+    confira: tentou && Object.keys(erros).length > 0,
+  }
+}
+
 // ─── Aba EAP ────────────────────────────────────────────────────────────────
 // Árvore com código automático. Tocar numa linha abre o que dá para fazer com ela.
 function AbaEap({ perfil, obra, atividades, aplicar, calendario, podeEditar }) {
@@ -103,8 +109,6 @@ function AbaEap({ perfil, obra, atividades, aplicar, calendario, podeEditar }) {
   const linhas = montarEap(atividades, { comArquivadas: verArquivadas, cal: calendario })
   const ativas = linhas.filter((l) => !l.arquivada).length
   const arquivadas = montarEap(atividades, { comArquivadas: true }).filter((l) => l.arquivada).length
-
-  // Toda mudança passa pela camada de dados e troca a lista única do módulo.
 
   const novo = (pai_id = '') => {
     setEscolhida(null)
@@ -138,7 +142,7 @@ function AbaEap({ perfil, obra, atividades, aplicar, calendario, podeEditar }) {
   return (
     <>
       <div className="sec-h eap-h">
-        <span className="lab">{plural(ativas, 'atividade', 'atividades')}{arquivadas > 0 && ` · ${arquivadas} arquivada${arquivadas > 1 ? 's' : ''}`}</span>
+        <span className="lab">{plural(ativas, 'atividade', 'atividades')}{arquivadas > 0 && ` · ${plural(arquivadas, 'arquivada', 'arquivadas')}`}</span>
         {arquivadas > 0 && (
           <label className="eap-tg"><input type="checkbox" checked={verArquivadas} onChange={(e) => setVerArquivadas(e.target.checked)} />Mostrar arquivadas</label>
         )}
@@ -168,7 +172,7 @@ function AbaEap({ perfil, obra, atividades, aplicar, calendario, podeEditar }) {
       <Sheet aberta={!!escolhida} onFechar={() => setEscolhida(null)} titulo={escolhida ? `${escolhida.codigo || 'Arquivada'} · ${escolhida.titulo}` : ''}>
         {escolhida && (
           <div className="col">
-            <p className="note">{fmtData(escolhida.inicio)} a {fmtData(escolhida.fim)} · {plural(escolhida.dias_uteis, 'dia útil', 'dias úteis')}</p>
+            <p className="note"><span className="num">{fmtData(escolhida.inicio)} a {fmtData(escolhida.fim)}</span> · {plural(escolhida.dias_uteis, 'dia útil', 'dias úteis')}</p>
             {!escolhida.arquivada && <button className="btn sec" disabled={ocupado} onClick={() => editar(escolhida)}><Icon n="edit" />Editar</button>}
             {!escolhida.arquivada && escolhida.nivel < NIVEL_MAXIMO && <button className="btn sec" disabled={ocupado} onClick={() => novo(escolhida.id)}><Icon n="plus" />Adicionar subatividade</button>}
             {!escolhida.arquivada && (
@@ -191,7 +195,7 @@ function AbaEap({ perfil, obra, atividades, aplicar, calendario, podeEditar }) {
 
 function FormSheet({ form, setForm, atividades, calendario, ocupado, onSalvar }) {
   const fechar = () => {
-    if (form?.campos.titulo.trim() && !window.confirm('O que você preencheu será descartado. Sair mesmo assim?')) return
+    if (form?.campos.titulo.trim() && !window.confirm(DESCARTAR)) return
     setForm(null)
   }
   return (
@@ -203,22 +207,18 @@ function FormSheet({ form, setForm, atividades, calendario, ocupado, onSalvar })
 
 function FormAtividade({ form, setForm, atividades, calendario, ocupado, onSalvar, onCancelar }) {
   const { campos, id, temFilhos } = form
-  const [tocado, setTocado] = useState({ inicio: true, fim: true })
-  const [tentou, setTentou] = useState(false)
   const erros = errosAtividade(campos, atividades, { id, temFilhos })
-  const aviso = (c) => ((tentou || tocado[c]) && erros[c]) || null
+  const { aviso, tocar, tentar, confira } = useAvisos(erros, { inicio: true, fim: true })
   const mudar = (c, valor) => {
     setForm((f) => ({ ...f, campos: { ...f.campos, [c]: valor } }))
-    setTocado((t) => ({ ...t, [c]: true }))
+    tocar(c)
   }
   const pais = paisPossiveis(atividades, id)
   const duracao = diasUteis(campos.inicio, campos.fim, calendario)
 
   const enviar = (e) => {
     e.preventDefault()
-    setTentou(true)
-    if (Object.keys(erros).length) return
-    onSalvar(campos)
+    if (tentar()) onSalvar(campos)
   }
 
   return (
@@ -255,7 +255,7 @@ function FormAtividade({ form, setForm, atividades, calendario, ocupado, onSalva
           {!erros.inicio && !erros.fim && <p className="note">Duração: <b className="num">{plural(duracao, 'dia útil', 'dias úteis')}</b> (segunda a sexta, tirando os feriados nacionais).</p>}
         </>
       )}
-      {tentou && Object.keys(erros).length > 0 && <div className="err" role="alert">Confira os campos marcados acima.</div>}
+      {confira && <div className="err" role="alert">Confira os campos marcados acima.</div>}
       <div className="acts">
         <button type="button" className="btn sec" onClick={onCancelar}>Cancelar</button>
         <button type="submit" className="btn pri" disabled={ocupado}><Icon n="check" />{id ? 'Salvar' : 'Criar'}</button>
@@ -285,7 +285,7 @@ function AbaLongo({ perfil, obra, atividades, aplicar, calendario, podeEditar, i
   const resumo = resumoPrazo(linhas, dia, calendario)
   const { colunas, pos } = escalaCronograma(linhas, modo)
   const largura = colunas.length * (modo === 'semana' ? 64 : 180)
-  const podeTocar = (l) => podeEditar && l.filhos === 0
+  const podeTocar = (l) => podeEditar && ehFolha(l)
 
   async function salvar(valor) {
     if (await gravar(salvarProgresso(perfil, obra.id, editando.id, valor), 'Progresso salvo.')) setEditando(null)
@@ -295,7 +295,7 @@ function AbaLongo({ perfil, obra, atividades, aplicar, calendario, podeEditar, i
     <>
       <div className="kpis">
         <Kpi rotulo="Previsto até hoje" valor={`${resumo.previsto}%`} detalhe="pelo cronograma" />
-        <Kpi tom={tomReal(resumo)} rotulo="Real" valor={`${resumo.real}%`} detalhe={resumo.real >= resumo.previsto ? 'em dia' : plural(resumo.previsto - resumo.real, 'ponto abaixo', 'pontos abaixo')} />
+        <Kpi tom={tomReal(resumo)} rotulo="Real" valor={`${resumo.real}%`} detalhe={textoReal(resumo)} />
         <Kpi tom={resumo.atrasadas ? 'cr' : ''} rotulo="Atrasadas" valor={resumo.atrasadas} detalhe="passaram do fim" />
         <Kpi tom={resumo.abaixo ? 'at' : ''} rotulo="Abaixo do previsto" valor={resumo.abaixo} detalhe="ainda no prazo" />
       </div>
@@ -375,7 +375,7 @@ function FormProgresso({ linha, previsto, ocupado, onSalvar, onCancelar }) {
   }
   return (
     <form className="col" onSubmit={enviar} noValidate>
-      <p className="note">{fmtData(linha.inicio)} a {fmtData(linha.fim)} · pelo cronograma, hoje deveria estar em <b className="num">{previsto}%</b>.</p>
+      <p className="note"><span className="num">{fmtData(linha.inicio)} a {fmtData(linha.fim)}</span> · pelo cronograma, hoje deveria estar em <b className="num">{previsto}%</b>.</p>
       <div className="field">
         <label htmlFor="pl-prog">Progresso real (%)</label>
         <input id="pl-prog" className="inp num" type="text" inputMode="numeric" pattern="[0-9]*" maxLength={3} autoFocus value={valor} onChange={(e) => setValor(e.target.value.replace(/\D/g, ''))} />
@@ -392,8 +392,17 @@ function FormProgresso({ linha, previsto, ocupado, onSalvar, onCancelar }) {
 // ─── Aba Médio prazo (lookahead / restrições) ───────────────────────────────
 // Quadro com uma coluna por semana, da atual até 3 a 6 semanas à frente.
 // Cada cartão é uma restrição (o que impede a atividade). Mover = setas, sem arrastar.
-const ICONE_TIPO = { Material: 'compras', 'Mão de obra': 'colab', Método: 'diario', Equipamento: 'key', Projeto: 'notas', Segurança: 'warn', Logística: 'forn' }
-const classeTipo = (tipo) => `tp-${TIPOS_RESTRICAO.indexOf(tipo)}`
+// Ícone e cor de cada tipo (as cores em index.css, .tp-*). Tipo novo em TIPOS_RESTRICAO
+// precisa de linha aqui e no CSS.
+const VISUAL_TIPO = {
+  Material: { icone: 'compras', classe: 'tp-material' },
+  'Mão de obra': { icone: 'colab', classe: 'tp-mao-de-obra' },
+  Método: { icone: 'diario', classe: 'tp-metodo' },
+  Equipamento: { icone: 'key', classe: 'tp-equipamento' },
+  Projeto: { icone: 'notas', classe: 'tp-projeto' },
+  Segurança: { icone: 'warn', classe: 'tp-seguranca' },
+  Logística: { icone: 'forn', classe: 'tp-logistica' },
+}
 
 function AbaMedio({ perfil, obra, atividades, restricoes, aplicar, calendario, podeEditar, irParaEap }) {
   const [semanas, setSemanas] = useState(4)
@@ -420,6 +429,10 @@ function AbaMedio({ perfil, obra, atividades, restricoes, aplicar, calendario, p
 
   const nova = (prazo = dia) => setForm({ id: null, campos: { atividade_id: '', descricao: '', tipo: '', prazo: prazoNovaRestricao(prazo, dia), responsavel: '' } })
   const editar = (r) => setForm({ id: r.id, campos: { atividade_id: r.atividade_id, descricao: r.descricao, tipo: r.tipo, prazo: r.prazo, responsavel: r.responsavel } })
+  const fecharForm = () => {
+    if ((form.campos.descricao.trim() || form.campos.atividade_id) && !window.confirm(DESCARTAR)) return
+    setForm(null)
+  }
   const salvar = async (campos) => {
     if (await gravar(salvarRestricao(perfil, obra.id, campos, form.id), form.id ? 'Restrição salva.' : 'Restrição registrada.')) setForm(null)
   }
@@ -449,7 +462,7 @@ function AbaMedio({ perfil, obra, atividades, restricoes, aplicar, calendario, p
       )}
 
       <div className="look">
-        {colunas.map((c, k) => (
+        {colunas.map((c) => (
           <section key={c.inicio} className="look-col" aria-label={c.rotulo}>
             <header className="look-cab">
               <b>{c.rotulo}</b>
@@ -460,8 +473,8 @@ function AbaMedio({ perfil, obra, atividades, restricoes, aplicar, calendario, p
             {c.restricoes.map((r) => {
               const vencida = restricaoVencida(r, dia)
               return (
-                <article key={r.id} className={`card look-card ${classeTipo(r.tipo)}${r.resolvida ? ' ok' : ''}`}>
-                  <div className="look-tipo"><Icon n={ICONE_TIPO[r.tipo]} />{r.tipo}{r.resolvida && <Tag tom="ne">Resolvida</Tag>}{vencida && <Tag tom="cr">Venceu {fmtDiaMes(r.prazo)}</Tag>}</div>
+                <article key={r.id} className={`card look-card ${VISUAL_TIPO[r.tipo].classe}${r.resolvida ? ' ok' : ''}`}>
+                  <div className="look-tipo"><Icon n={VISUAL_TIPO[r.tipo].icone} />{r.tipo}{r.resolvida && <Tag tom="ne">Resolvida</Tag>}{vencida && <Tag tom="cr">Venceu <span className="num">{fmtDiaMes(r.prazo)}</span></Tag>}</div>
                   <div className="look-desc">{r.descricao}</div>
                   <div className="look-mt">{rotuloAtiv(r.atividade_id)}</div>
                   <div className="look-mt">Prazo <span className="num">{fmtDiaMes(r.prazo)}</span> · {r.responsavel}</div>
@@ -476,37 +489,30 @@ function AbaMedio({ perfil, obra, atividades, restricoes, aplicar, calendario, p
                 </article>
               )
             })}
-            {podeEditar && <button className="btn sec sm look-add" onClick={() => nova(k === 0 ? dia : c.inicio)}><Icon n="plus" />Nesta semana</button>}
+            {podeEditar && <button className="btn sec sm look-add" onClick={() => nova(c.inicio)}><Icon n="plus" />Nesta semana</button>}
           </section>
         ))}
       </div>
       {depois > 0 && <p className="note">{plural(depois, 'restrição aberta tem', 'restrições abertas têm')} prazo depois dessas semanas. Aumente as semanas à frente para ver.</p>}
 
-      <Sheet aberta={!!form} onFechar={() => setForm(null)} titulo={form?.id ? 'Editar restrição' : 'Nova restrição'}>
-        {form && <FormRestricao key={form.id || 'nova'} form={form} setForm={setForm} linhas={linhas} responsaveis={[...new Set([perfil.nome, ...responsaveis])]} ocupado={ocupado} onSalvar={salvar} />}
+      <Sheet aberta={!!form} onFechar={fecharForm} titulo={form?.id ? 'Editar restrição' : 'Nova restrição'}>
+        {form && <FormRestricao key={form.id || 'nova'} form={form} setForm={setForm} linhas={linhas} responsaveis={[...new Set([perfil.nome, ...responsaveis])]} ocupado={ocupado} onSalvar={salvar} onCancelar={fecharForm} />}
       </Sheet>
     </>
   )
 }
 
-function FormRestricao({ form, setForm, linhas, responsaveis, ocupado, onSalvar }) {
+function FormRestricao({ form, setForm, linhas, responsaveis, ocupado, onSalvar, onCancelar }) {
   const { campos, id } = form
-  const [tocado, setTocado] = useState({ prazo: true })
-  const [tentou, setTentou] = useState(false)
   const erros = errosRestricao(campos, linhas, { dia: hoje(), nova: !id })
-  const aviso = (c) => ((tentou || tocado[c]) && erros[c]) || null
+  const { aviso, tocar, tentar, confira } = useAvisos(erros, { prazo: true })
   const mudar = (c, valor) => {
     setForm((f) => ({ ...f, campos: { ...f.campos, [c]: valor } }))
-    setTocado((t) => ({ ...t, [c]: true }))
-  }
-  const cancelar = () => {
-    if ((campos.descricao.trim() || campos.atividade_id) && !window.confirm('O que você preencheu será descartado. Sair mesmo assim?')) return
-    setForm(null)
+    tocar(c)
   }
   const enviar = (e) => {
     e.preventDefault()
-    setTentou(true)
-    if (!Object.keys(erros).length) onSalvar(campos)
+    if (tentar()) onSalvar(campos)
   }
   return (
     <form className="col" onSubmit={enviar} noValidate>
@@ -527,7 +533,7 @@ function FormRestricao({ form, setForm, linhas, responsaveis, ocupado, onSalvar 
         <span className="flabel">Tipo</span>
         <div className="look-tipos" role="radiogroup" aria-label="Tipo">
           {TIPOS_RESTRICAO.map((t) => (
-            <button type="button" key={t} role="radio" aria-checked={campos.tipo === t} className={`${classeTipo(t)}${campos.tipo === t ? ' on' : ''}`} onClick={() => mudar('tipo', t)}><Icon n={ICONE_TIPO[t]} />{t}</button>
+            <button type="button" key={t} role="radio" aria-checked={campos.tipo === t} className={`${VISUAL_TIPO[t].classe}${campos.tipo === t ? ' on' : ''}`} onClick={() => mudar('tipo', t)}><Icon n={VISUAL_TIPO[t].icone} />{t}</button>
           ))}
         </div>
         {aviso('tipo') && <div className="err" role="alert">{aviso('tipo')}</div>}
@@ -545,9 +551,9 @@ function FormRestricao({ form, setForm, linhas, responsaveis, ocupado, onSalvar 
           {aviso('responsavel') && <div className="err" role="alert">{aviso('responsavel')}</div>}
         </div>
       </div>
-      {tentou && Object.keys(erros).length > 0 && <div className="err" role="alert">Confira os campos marcados acima.</div>}
+      {confira && <div className="err" role="alert">Confira os campos marcados acima.</div>}
       <div className="acts">
-        <button type="button" className="btn sec" onClick={cancelar}>Cancelar</button>
+        <button type="button" className="btn sec" onClick={onCancelar}>Cancelar</button>
         <button type="submit" className="btn pri" disabled={ocupado}><Icon n="check" />{id ? 'Salvar' : 'Registrar'}</button>
       </div>
     </form>
@@ -568,18 +574,20 @@ function AbaCurto({ perfil, obra, atividades, restricoes, subtarefas, aplicar, c
   const daSemana = atividadesDaSemana(linhas, semana)
   const { total, concluidas, ppc } = ppcDaSemana(daSemana)
   const causas = causasDaSemana(daSemana, subtarefas, semana)
+  // O mestre vê as outras semanas, mas só mexe na atual (a camada de dados também confere).
+  const soVer = !podeMexerNaSemana(perfil.role, semana, atual)
 
   const salvarCausa = async (valor) => {
     const p = causa.tipo === 'atividade'
       ? marcarNaoRealizado(perfil, obra.id, causa.id, valor, semana)
-      : marcarSubtarefa(perfil, obra.id, causa.id, false, valor)
+      : subtarefaNaoRealizada(perfil, obra.id, causa.id, valor, semana)
     if (await gravar(p, 'Marcado como não realizado.')) setCausa(null)
   }
 
   const navegar = (
     <div className="qsel">
       <button onClick={() => setSemana(somarDias(semana, -7))} aria-label="Semana anterior"><Icon n="back" /></button>
-      <div className="q">{rotuloSemana(semana, atual)}<small>{fmtData(semana)} a {fmtData(somarDias(semana, 6))}</small></div>
+      <div className="q">{rotuloSemana(semana, atual)}<small className="num">{fmtData(semana)} a {fmtData(somarDias(semana, 6))}</small></div>
       <button onClick={() => setSemana(somarDias(semana, 7))} aria-label="Próxima semana"><Icon n="next" /></button>
     </div>
   )
@@ -599,6 +607,7 @@ function AbaCurto({ perfil, obra, atividades, restricoes, subtarefas, aplicar, c
   return (
     <>
       {navegar}
+      {soVer && <p className="note">Você pode ver esta semana, mas só mexe na semana atual.</p>}
       <div className={`card pad ppc ${tom}`}>
         <span className="lab">PPC da semana · Percentual do Plano Concluído</span>
         <div className="ppc-linha">
@@ -609,7 +618,7 @@ function AbaCurto({ perfil, obra, atividades, restricoes, subtarefas, aplicar, c
         {causas.length > 0 && (
           <div className="ppc-causas"><span className="lab">Por que não foi feito</span>{causas.map((c) => <Tag key={c.causa} tom="ne">{c.causa} · {c.n}</Tag>)}</div>
         )}
-        {semana < atual && <p className="note">Semanas passadas mostram a situação de hoje: o histórico de cada semana chega quando o planejamento for para o banco.</p>}
+        {semana < atual && <p className="note">Semanas passadas mostram a situação de hoje: o app ainda não guarda o retrato de cada semana.</p>}
       </div>
 
       <div className="look kanban">
@@ -621,11 +630,11 @@ function AbaCurto({ perfil, obra, atividades, restricoes, subtarefas, aplicar, c
               {!cartoes.length && <p className="look-vazio">Nada aqui.</p>}
               {cartoes.map((l) => (
                 <CartaoSemana key={l.id} l={l} semana={semana} subtarefas={subtarefasDe(subtarefas, l.id)}
-                  impedimentos={restricoesAbertas(restricoes, l.id)} ocupado={ocupado}
+                  impedimentos={restricoesAbertas(restricoes, l.id)} ocupado={ocupado} soVer={soVer}
                   onMover={(novo) => gravar(moverNaSemana(perfil, obra.id, l.id, novo), `Movida para ${novo}.`)}
                   onNaoRealizado={() => setCausa({ tipo: 'atividade', id: l.id, titulo: l.titulo, valor: naoRealizadaNaSemana(l, semana) ? l.causa_nao_realizado : '' })}
                   onMarcar={(s, feita) => gravar(marcarSubtarefa(perfil, obra.id, s.id, feita))}
-                  onSubNaoFeita={(s) => setCausa({ tipo: 'subtarefa', id: s.id, titulo: s.titulo, valor: s.causa_nao_realizado || '' })}
+                  onSubNaoFeita={(s) => setCausa({ tipo: 'subtarefa', id: s.id, titulo: s.titulo, valor: naoRealizadaNaSemana(s, semana) ? s.causa_nao_realizado : '' })}
                   onNovaSub={(titulo) => gravar(salvarSubtarefa(perfil, obra.id, l.id, titulo), 'Subtarefa criada.')} />
               ))}
             </section>
@@ -640,7 +649,7 @@ function AbaCurto({ perfil, obra, atividades, restricoes, subtarefas, aplicar, c
   )
 }
 
-function CartaoSemana({ l, semana, subtarefas, impedimentos, ocupado, onMover, onNaoRealizado, onMarcar, onSubNaoFeita, onNovaSub }) {
+function CartaoSemana({ l, semana, subtarefas, impedimentos, ocupado, soVer, onMover, onNaoRealizado, onMarcar, onSubNaoFeita, onNovaSub }) {
   const [aberto, setAberto] = useState(false)
   const [nova, setNova] = useState('')
   const [tentou, setTentou] = useState(false)
@@ -657,22 +666,22 @@ function CartaoSemana({ l, semana, subtarefas, impedimentos, ocupado, onMover, o
     }
   }
   return (
-    <article className={`card look-card sem-card${l.status === 'Concluído' ? ' ok' : ''}`}>
+    <article className={`card look-card sem-card${l.status === CONCLUIDO ? ' ok' : ''}`}>
       <div className="look-desc"><span className="num eap-cod">{l.codigo}</span> {l.titulo}</div>
       <div className="look-mt"><span className="num">{fmtDiaMes(l.inicio)} a {fmtDiaMes(l.fim)}</span> · real <span className="num">{l.progresso}%</span></div>
       {(l.acumulada || impedimentos.length > 0 || naoRealizada) && (
         <div className="btns">
-          {l.acumulada && <Tag tom="at">Acumulada · fim {fmtDiaMes(l.fim)}</Tag>}
+          {l.acumulada && <Tag tom="at">Acumulada · fim <span className="num">{fmtDiaMes(l.fim)}</span></Tag>}
           {impedimentos.length > 0 && <Tag tom="at">Impedida · {impedimentos.map((r) => r.tipo).join(', ')}</Tag>}
           {naoRealizada && <Tag tom="cr">Não realizado · {l.causa_nao_realizado}</Tag>}
         </div>
       )}
       <div className="sem-acoes">
         <label className="sr" htmlFor={`mv-${l.id}`}>Mover {l.titulo} para</label>
-        <select id={`mv-${l.id}`} className="inp" value={statusDe(l)} disabled={ocupado} onChange={(e) => onMover(e.target.value)}>
+        <select id={`mv-${l.id}`} className="inp" value={statusDe(l)} disabled={ocupado || soVer} onChange={(e) => onMover(e.target.value)}>
           {STATUS_ATIVIDADE.map((s) => <option key={s} value={s}>{s}</option>)}
         </select>
-        {l.status !== 'Concluído' && <button className="btn sec sm" disabled={ocupado} onClick={onNaoRealizado}>Não realizado</button>}
+        {podeMarcarNaoRealizado(l) && !soVer && <button className="btn sec sm" disabled={ocupado} onClick={onNaoRealizado}>Não realizado</button>}
       </div>
       <button className="link sem-sub" onClick={() => setAberto((a) => !a)} aria-expanded={aberto}>
         {subtarefas.length ? <>Subtarefas <span className="num">{feitas}/{subtarefas.length}</span></> : 'Subtarefas'} {aberto ? '▴' : '▾'}
@@ -681,16 +690,17 @@ function CartaoSemana({ l, semana, subtarefas, impedimentos, ocupado, onMover, o
         <div className="sem-check">
           {subtarefas.map((s) => (
             <div key={s.id} className={`sem-item${s.feita ? ' feita' : ''}`}>
-              <label><input type="checkbox" checked={s.feita} disabled={ocupado} onChange={(e) => onMarcar(s, e.target.checked)} />{s.titulo}</label>
-              {!s.feita && (s.causa_nao_realizado
+              <label><input type="checkbox" checked={s.feita} disabled={ocupado || soVer} onChange={(e) => onMarcar(s, e.target.checked)} />{s.titulo}</label>
+              {!s.feita && naoRealizadaNaSemana(s, semana) && soVer && <span className="sem-causa"><Tag tom="cr">Não realizado · {s.causa_nao_realizado}</Tag></span>}
+              {!s.feita && !soVer && (naoRealizadaNaSemana(s, semana)
                 ? <button className="sem-causa" onClick={() => onSubNaoFeita(s)}><Tag tom="cr">Não realizado · {s.causa_nao_realizado}</Tag></button>
                 : <button className="link" disabled={ocupado} onClick={() => onSubNaoFeita(s)}>Não realizado</button>)}
             </div>
           ))}
-          <form className="sem-nova" onSubmit={adicionar} noValidate>
+          {!soVer && <form className="sem-nova" onSubmit={adicionar} noValidate>
             <input className="inp" aria-label={`Nova subtarefa de ${l.titulo}`} maxLength={120} placeholder="Nova subtarefa" value={nova} onChange={(e) => setNova(e.target.value)} />
             <button type="submit" className="btn sec sm" disabled={ocupado} aria-label="Adicionar subtarefa"><Icon n="plus" /></button>
-          </form>
+          </form>}
           {erroNova && <div className="err" role="alert">{erroNova}</div>}
         </div>
       )}

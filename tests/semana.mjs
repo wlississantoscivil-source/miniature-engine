@@ -1,7 +1,7 @@
 // Curto prazo: quem entra na semana, PPC, causas de "não realizado" e o checklist.
 import * as dados from '../src/lib/dados.js'
-import { atividadesDaSemana, causasDaSemana, montarEap, ppcDaSemana, progressoPeloStatus, semanaDe, tomPpc } from '../src/lib/planejamento.js'
-import { hoje } from '../src/lib/regras.js'
+import { atividadesDaSemana, causasDaSemana, erroSemanaDoMestre, podeMexerNaSemana, SO_SEMANA_ATUAL, montarEap, ppcDaSemana, progressoPeloStatus, semanaDe, tomPpc } from '../src/lib/planejamento.js'
+import { hoje, somarDias } from '../src/lib/regras.js'
 
 let passou = 0
 let total = 0
@@ -23,7 +23,7 @@ const linhas = montarEap([
   a('domingo', '2026-11-29', '2026-12-03', 'A fazer'),
 ])
 const semana = atividadesDaSemana(linhas, SEM)
-conferir('entra quem cruza a semana e a acumulada; grupo não entra', semana.map((l) => l.id), ['cruza', 'dentro', 'acumulada', 'domingo'])
+conferir('entra quem cruza a semana e a acumulada; grupo não entra (empate de ordem: pelo id)', semana.map((l) => l.id), ['acumulada', 'cruza', 'dentro', 'domingo'])
 conferir('acumulada marcada', semana.filter((l) => l.acumulada).map((l) => l.id), ['acumulada'])
 conferir('PPC = 1 de 4 = 25%', ppcDaSemana(semana), { total: 4, concluidas: 1, ppc: 25 })
 conferir('semana vazia não tem PPC', ppcDaSemana([]).ppc, null)
@@ -31,10 +31,18 @@ conferir('tom do PPC', [tomPpc(30), tomPpc(60), tomPpc(80), tomPpc(null)], ['cr'
 conferir('progresso acompanha o quadro', [progressoPeloStatus('Concluído', 40), progressoPeloStatus('Em andamento', 100), progressoPeloStatus('A fazer', 100), progressoPeloStatus('A fazer', 30)], [100, 90, 0, 30])
 const causas = causasDaSemana(
   [{ id: 'x', causa_nao_realizado: 'Clima', semana_nao_realizado: SEM }, { id: 'y', causa_nao_realizado: 'Material', semana_nao_realizado: '2026-11-16' }],
-  [{ atividade_id: 'x', feita: false, causa_nao_realizado: 'Clima' }, { atividade_id: 'x', feita: true, causa_nao_realizado: null }, { atividade_id: 'z', feita: false, causa_nao_realizado: 'Projeto' }],
+  [{ atividade_id: 'x', feita: false, causa_nao_realizado: 'Clima', semana_nao_realizado: SEM }, { atividade_id: 'x', feita: true, causa_nao_realizado: null, semana_nao_realizado: null }, { atividade_id: 'z', feita: false, causa_nao_realizado: 'Projeto', semana_nao_realizado: SEM }],
   SEM,
 )
 conferir('causas só desta semana e só das atividades dela', causas, [{ causa: 'Clima', n: 2 }])
+// Revisão de 20/11: a causa da subtarefa marcada numa semana não conta nas seguintes.
+conferir('causa de subtarefa de semana passada não conta', causasDaSemana([{ id: 'x' }], [{ atividade_id: 'x', feita: false, causa_nao_realizado: 'Material', semana_nao_realizado: '2026-11-16' }], SEM), [])
+
+// Revisão de 20/11: o mestre só mexe na semana atual
+conferir('mestre mexe só na semana atual; engenheiro em qualquer', [podeMexerNaSemana('Mestre', SEM, SEM), podeMexerNaSemana('Mestre', '2026-11-30', SEM), podeMexerNaSemana('Engenheiro', '2026-11-30', SEM)], [true, false, true])
+conferir('mestre: atividade fora do quadro da semana é recusada', erroSemanaDoMestre('Mestre', linhas, 'futura', '2026-11-25'), SO_SEMANA_ATUAL)
+conferir('mestre: acumulada está no quadro, pode', erroSemanaDoMestre('Mestre', linhas, 'acumulada', '2026-11-25'), null)
+conferir('engenheiro nunca é barrado pela semana', erroSemanaDoMestre('Engenheiro', linhas, 'futura', '2026-11-25'), null)
 
 // Camada de dados (mock relativo a hoje)
 const perfis = (await dados.listarPerfisDeExemplo()).data
@@ -60,16 +68,29 @@ const comSub = await dados.salvarSubtarefa(carlos, 'o1', 'pa5', '  Reboco da sal
 const nova = comSub.data.subtarefas.find((s) => s.titulo === 'Reboco da sala 4')
 conferir('mestre cria subtarefa, com nome limpo', !!nova, true)
 conferir('subtarefa vazia recusada', (await dados.salvarSubtarefa(carlos, 'o1', 'pa5', ' ')).erro, 'Diga o que precisa ser feito.')
-const nrSub = await dados.marcarSubtarefa(carlos, 'o1', nova.id, false, 'Material')
-conferir('subtarefa não realizada guarda a causa', nrSub.data.subtarefas.find((s) => s.id === nova.id).causa_nao_realizado, 'Material')
+const nrSub = await dados.subtarefaNaoRealizada(carlos, 'o1', nova.id, 'Material', esta)
+conferir('subtarefa não realizada guarda a causa e a semana', (({ causa_nao_realizado, semana_nao_realizado }) => [causa_nao_realizado, semana_nao_realizado])(nrSub.data.subtarefas.find((s) => s.id === nova.id)), ['Material', esta])
+conferir('subtarefa: "não realizado" sem causa é recusado', (await dados.subtarefaNaoRealizada(carlos, 'o1', nova.id, '', esta)).erro, 'Escolha a causa: o que impediu de fazer?')
+conferir('subtarefa: semana que não é segunda é recusada', (await dados.subtarefaNaoRealizada(wlisses, 'o1', nova.id, 'Clima', somarDias(esta, 2))).erro, 'Semana inválida. Recarregue a página.')
+conferir('subtarefa: mestre não marca "não realizado" em outra semana', (await dados.subtarefaNaoRealizada(carlos, 'o1', nova.id, 'Clima', somarDias(esta, 7))).erro, SO_SEMANA_ATUAL)
 const feita = await dados.marcarSubtarefa(carlos, 'o1', nova.id, true)
-conferir('marcar feita limpa a causa', (({ feita: f, causa_nao_realizado }) => [f, causa_nao_realizado])(feita.data.subtarefas.find((s) => s.id === nova.id)), [true, null])
+conferir('marcar feita limpa a causa e a semana', (({ feita: f, causa_nao_realizado, semana_nao_realizado }) => [f, causa_nao_realizado, semana_nao_realizado])(feita.data.subtarefas.find((s) => s.id === nova.id)), [true, null, null])
+conferir('feita não pode ser "não realizada"', (await dados.subtarefaNaoRealizada(carlos, 'o1', nova.id, 'Clima', esta)).erro, 'Esta subtarefa já foi feita.')
 conferir('mestre não mexe em obra que não é dele', (await dados.moverNaSemana(carlos, 'o2', 'pb2', 'Concluído')).erro !== null, true)
 
 conferir('"não realizado" com semana que não é segunda é recusado', (await dados.marcarNaoRealizado(wlisses, 'o1', 'pa8', 'Clima', '2026-11-25')).erro, 'Semana inválida. Recarregue a página.')
 await dados.arquivarAtividade(wlisses, 'o1', 'pa8', true)
 conferir('subtarefa de atividade arquivada não é marcada', (await dados.marcarSubtarefa(wlisses, 'o1', 'st7', true)).erro, 'Esta subtarefa não existe mais. Recarregue a página.')
 await dados.arquivarAtividade(wlisses, 'o1', 'pa8', false)
+
+// O mestre fora da semana atual, pela camada de dados (pa13 Piso começa daqui a 12 dias)
+const proximaSemana = somarDias(esta, 7)
+conferir('mestre não move atividade de outra semana', (await dados.moverNaSemana(carlos, 'o1', 'pa13', 'Em andamento')).erro, SO_SEMANA_ATUAL)
+conferir('mestre não marca "não realizado" em outra semana', (await dados.marcarNaoRealizado(carlos, 'o1', 'pa5', 'Clima', proximaSemana)).erro, SO_SEMANA_ATUAL)
+conferir('mestre não cria subtarefa em atividade de outra semana', (await dados.salvarSubtarefa(carlos, 'o1', 'pa13', 'Rejunte')).erro, SO_SEMANA_ATUAL)
+conferir('mestre não marca subtarefa de atividade de outra semana', (await dados.marcarSubtarefa(carlos, 'o1', 'st1', true, somarDias(hoje(), -35))).erro, SO_SEMANA_ATUAL) // semana antes de o Reboco começar
+conferir('engenheiro move atividade de outra semana', (await dados.moverNaSemana(wlisses, 'o1', 'pa13', 'Em andamento')).erro, null)
+await dados.moverNaSemana(wlisses, 'o1', 'pa13', 'A fazer')
 
 console.log(`semana: ${passou}/${total}`)
 process.exit(passou === total ? 0 : 1)

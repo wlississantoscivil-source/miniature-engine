@@ -18,8 +18,9 @@ import {
 import { completarCusto, religarEtapas, totaisItens } from './planilha.js'
 import { fluxoMensal, orcadoPorEtapa } from './orcamento.js'
 import {
-  CALENDARIO_PADRAO, erroCausa, erroDesarquivar, erroProgresso, errosAtividade, errosRestricao, erroSubtarefa, montarEap, novoPrazo, podeEditarEap,
-  progressoPeloStatus, proximaOrdem, semanaDe, STATUS_ATIVIDADE, statusPeloProgresso, trocarOrdem,
+  CALENDARIO_PADRAO, CONCLUIDO, erroCausa, erroDesarquivar, erroProgresso, errosAtividade, errosRestricao, erroSemanaDoMestre, erroSubtarefa, montarEap,
+  moverEntreIrmas, novoPrazo, podeEditarEap, podeMarcarNaoRealizado, podeMexerNaSemana, progressoPeloStatus, proximaOrdem, proximaOrdemDe, semanaDe,
+  SO_SEMANA_ATUAL, STATUS_ATIVIDADE, statusPeloProgresso, temFilhosAtivos,
 } from './planejamento.js'
 
 export const USAR_MOCK = false
@@ -40,6 +41,7 @@ const TABELAS = [
   'profiles', 'obras', 'membros_obra', 'fornecedores', 'planilhas_obra', 'etapas_obra', 'itens_contrato',
   'medicoes', 'fechamentos', 'pagamentos', 'notas_fiscais', 'compras', 'itens_lista_compra',
   'funcionarios', 'presencas', 'diarias_funcionarios', 'pagamentos_diarias', 'diarios_obra', 'fotos',
+  'atividades_plano', 'restricoes_plano', 'subtarefas_plano',
 ]
 // Colunas com fuso (timestamptz): viram o horário local 'AAAA-MM-DDTHH:MM:SS'.
 // Colunas `date` chegam como 'AAAA-MM-DD' e ficam como estão (sem UTC).
@@ -787,195 +789,248 @@ export async function salvarDiario(perfil, obraId, diario) {
 }
 
 // ─── Planejamento (EAP, longo, médio e curto prazo) ─────────────────────────
-// ⚠ AINDA SEM TABELA NO BANCO: as atividades ficam só NA MEMÓRIA desta janela,
-// começando pelos exemplos de mockData.js, e somem ao recarregar (F5).
-// A permissão já é conferida aqui, como será com o banco.
-// Toda gravação devolve a lista inteira da obra: a tela troca o estado único
+// No banco desde 20/11/2026: `atividades_plano`, `restricoes_plano`, `subtarefas_plano`
+// (migration 20261120180000_planejamento.sql). Lidos na carga junto com o resto.
+// Toda gravação devolve as listas inteiras da obra: a tela troca o estado único
 // do módulo de uma vez, e as quatro abas enxergam a mesma coisa.
-const plano = { atividades: structuredClone(exemplo.atividades), restricoes: structuredClone(exemplo.restricoes), subtarefas: structuredClone(exemplo.subtarefas) }
-const atividadesDaObra = (obraId) => plano.atividades.filter((a) => a.obra_id === obraId)
-const restricoesDaObra = (obraId) => plano.restricoes.filter((r) => r.obra_id === obraId)
-const subtarefasDaObra = (obraId) => plano.subtarefas.filter((s) => s.obra_id === obraId)
+// O mestre grava só a semana (quadro, "não realizado" e checklist): conferido aqui;
+// no passo 10, também na RLS.
+const atividadesDaObra = (obraId) => db.atividades_plano.filter((a) => a.obra_id === obraId)
+const restricoesDaObra = (obraId) => db.restricoes_plano.filter((r) => r.obra_id === obraId)
+const subtarefasDaObra = (obraId) => db.subtarefas_plano.filter((s) => s.obra_id === obraId)
 const listasDaObra = (obraId) => ({ atividades: atividadesDaObra(obraId), restricoes: restricoesDaObra(obraId), subtarefas: subtarefasDaObra(obraId) })
-const listaPlano = (obraId) => ok(listasDaObra(obraId))
 let ultimoIdPlano = 0
-// No banco, a obra tem outro id ('o1' do exemplo vira um uuid): os exemplos
-// são ligados à obra de mesmo nome. Obra de exemplo que não está no banco fica de fora.
-let planoReligado = !COM_BANCO
-function religarObrasDoPlano() {
-  if (planoReligado) return
-  planoReligado = true
-  for (const a of [...plano.atividades, ...plano.restricoes, ...plano.subtarefas]) {
-    const nome = porId(exemplo.obras, a.obra_id)?.nome
-    a.obra_id = db.obras.find((o) => o.nome === nome)?.id || null
-  }
+const SUMIU = {
+  atividade: 'Esta atividade não existe mais. Recarregue a página.',
+  restricao: 'Esta restrição não existe mais. Recarregue a página.',
+  subtarefa: 'Esta subtarefa não existe mais. Recarregue a página.',
 }
 
-async function conferirPlano(perfil, obraId, editar) {
-  const semBanco = await pronto()
-  if (semBanco) return semBanco
-  religarObrasDoPlano()
-  const a = acesso(perfil, obraId)
-  if (!a.ver || (editar && !podeEditarEap(perfil.role, a))) return falha(SEM_PERMISSAO)
+// Grava uma linha nova e a põe na carga local (o banco dá o id).
+// Devolve null ou a frase de erro para a tela.
+async function inserirPlano(tabela, linha) {
+  if (!COM_BANCO) {
+    db[tabela].push({ id: `${tabela}-${Date.now()}-${++ultimoIdPlano}`, ...linha })
+    return null
+  }
+  const supabase = await banco()
+  const { data, error } = await supabase.from(tabela).insert(linha).select('*').single()
+  esquecerCarga()
+  if (error) return erroDoBanco(error, `gravar em ${tabela}`)
+  for (const c of MOMENTOS) if (data[c]) data[c] = momentoLocal(new Date(data[c]))
+  db[tabela].push(data)
   return null
 }
 
+// Muda colunas de uma linha. Confere que o banco mudou mesmo (0 linhas = recusa calada).
+async function mudarPlano(tabela, id, mudanca) {
+  if (COM_BANCO) {
+    const supabase = await banco()
+    const { data, error } = await supabase.from(tabela).update(mudanca).eq('id', id).select('id')
+    esquecerCarga()
+    if (error) return erroDoBanco(error, `mudar ${tabela}`)
+    if (!data.length) return 'O banco não gravou a mudança. Recarregue a página e tente de novo.'
+  }
+  Object.assign(porId(db[tabela], id), mudanca)
+  return null
+}
+// Erro de gravação → resposta para a tela; sem erro → as listas novas da obra.
+const respostaDaGravacao = (erro, obraId) => (erro ? falha(erro) : ok(listasDaObra(obraId)))
+
+// Ler e mexer na semana: quem vê a obra. Mudar EAP, cronograma e restrições: menos o mestre.
+// Devolvem null (pode) ou a resposta de recusa para a tela.
+async function conferirPlano(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  return acesso(perfil, obraId).ver ? null : falha(SEM_PERMISSAO)
+}
+async function conferirEap(perfil, obraId) {
+  const barrado = await conferirPlano(perfil, obraId)
+  if (barrado) return barrado
+  return podeEditarEap(perfil.role, acesso(perfil, obraId)) ? null : falha(SEM_PERMISSAO)
+}
+
 export async function listarPlanejamento(perfil, obraId) {
-  const barrado = await conferirPlano(perfil, obraId, false)
+  const barrado = await conferirPlano(perfil, obraId)
   if (barrado) return barrado
   return ok({ ...listasDaObra(obraId), calendario: CALENDARIO_PADRAO, podeEditarEap: podeEditarEap(perfil.role, acesso(perfil, obraId)) })
 }
 
 // Cria (sem `id`) ou edita uma atividade. Mudou de pai: vai para o fim da lista do pai novo.
 export async function salvarAtividade(perfil, obraId, campos, id = null) {
-  const barrado = await conferirPlano(perfil, obraId, true)
+  const barrado = await conferirEap(perfil, obraId)
   if (barrado) return barrado
   const lista = atividadesDaObra(obraId)
   const atual = id ? lista.find((a) => a.id === id) : null
-  if (id && !atual) return falha('Esta atividade não existe mais. Recarregue a página.')
-  const temFilhos = !!atual && lista.some((a) => a.pai_id === id && !a.arquivada)
+  if (id && !atual) return falha(SUMIU.atividade)
+  const temFilhos = !!atual && temFilhosAtivos(lista, id)
   const erros = errosAtividade(campos, lista, { id, temFilhos })
   if (Object.keys(erros).length) return falha(Object.values(erros)[0])
   const pai_id = campos.pai_id || null
   const linha = { titulo: campos.titulo.trim(), pai_id, inicio: temFilhos ? atual.inicio : campos.inicio, fim: temFilhos ? atual.fim : campos.fim }
   if (atual) {
     if ((atual.pai_id || null) !== pai_id) linha.ordem = proximaOrdem(lista, pai_id)
-    Object.assign(atual, linha)
-  } else {
-    plano.atividades.push({ id: `pl-${Date.now()}-${++ultimoIdPlano}`, obra_id: obraId, ...linha, ordem: proximaOrdem(lista, pai_id), progresso: 0, status: STATUS_ATIVIDADE[0], causa_nao_realizado: null, semana_nao_realizado: null, arquivada: false })
+    return respostaDaGravacao(await mudarPlano('atividades_plano', id, linha), obraId)
   }
-  return listaPlano(obraId)
+  return respostaDaGravacao(await inserirPlano('atividades_plano', {
+    obra_id: obraId, ...linha, ordem: proximaOrdem(lista, pai_id), progresso: 0, status: STATUS_ATIVIDADE[0], causa_nao_realizado: null, semana_nao_realizado: null, arquivada: false,
+  }), obraId)
 }
 
+// Subir (-1) ou descer (+1). No banco, a função `mover_atividade` renumera as irmãs
+// numa gravação só: se falhar, nada muda (antes eram duas gravações soltas).
 export async function moverAtividade(perfil, obraId, id, direcao) {
-  const barrado = await conferirPlano(perfil, obraId, true)
+  const barrado = await conferirEap(perfil, obraId)
   if (barrado) return barrado
-  for (const t of trocarOrdem(atividadesDaObra(obraId), id, direcao)) porId(plano.atividades, t.id).ordem = t.ordem
-  return listaPlano(obraId)
+  if (![-1, 1].includes(direcao)) return falha('Direção inválida.')
+  if (!atividadesDaObra(obraId).some((a) => a.id === id)) return falha(SUMIU.atividade)
+  const mudancas = moverEntreIrmas(atividadesDaObra(obraId), id, direcao)
+  if (COM_BANCO) {
+    const { error } = await (await banco()).rpc('mover_atividade', { p_id: id, p_direcao: direcao })
+    esquecerCarga()
+    if (error) return falha(erroDoBanco(error, 'mover atividade'))
+  }
+  for (const m of mudancas) porId(db.atividades_plano, m.id).ordem = m.ordem
+  return ok(listasDaObra(obraId))
 }
 
 // Arquivar não apaga: a atividade (e o que está dentro dela) sai da EAP e das contas, e pode voltar.
 export async function arquivarAtividade(perfil, obraId, id, arquivada) {
-  const barrado = await conferirPlano(perfil, obraId, true)
+  const barrado = await conferirEap(perfil, obraId)
   if (barrado) return barrado
   const a = atividadesDaObra(obraId).find((x) => x.id === id)
-  if (!a) return falha('Esta atividade não existe mais. Recarregue a página.')
+  if (!a) return falha(SUMIU.atividade)
+  const mudanca = { arquivada }
   if (!arquivada) {
     const erro = erroDesarquivar(atividadesDaObra(obraId), id)
     if (erro) return falha(erro)
+    // Desarquivada volta para o fim da lista: o lugar antigo pode ter sido ocupado.
+    mudanca.ordem = proximaOrdem(atividadesDaObra(obraId).filter((x) => x.id !== id), a.pai_id)
   }
-  a.arquivada = arquivada
-  // Desarquivada volta para o fim da lista: o lugar antigo pode ter sido ocupado.
-  if (!arquivada) a.ordem = proximaOrdem(atividadesDaObra(obraId).filter((x) => x.id !== id), a.pai_id)
-  return listaPlano(obraId)
+  return respostaDaGravacao(await mudarPlano('atividades_plano', id, mudanca), obraId)
 }
 
 // Progresso real de uma atividade (só as que não têm subatividades: o grupo é calculado).
 export async function salvarProgresso(perfil, obraId, id, valor) {
-  const barrado = await conferirPlano(perfil, obraId, true)
+  const barrado = await conferirEap(perfil, obraId)
   if (barrado) return barrado
   const erro = erroProgresso(valor)
   if (erro) return falha(erro)
   const lista = atividadesDaObra(obraId)
   const a = lista.find((x) => x.id === id)
-  if (!a) return falha('Esta atividade não existe mais. Recarregue a página.')
-  if (lista.some((x) => x.pai_id === id && !x.arquivada)) return falha('O progresso de um grupo vem das atividades dentro dele.')
-  a.progresso = Number(valor)
-  a.status = statusPeloProgresso(a.status, a.progresso)
-  return listaPlano(obraId)
+  if (!a) return falha(SUMIU.atividade)
+  if (temFilhosAtivos(lista, id)) return falha('O progresso de um grupo vem das atividades dentro dele.')
+  const progresso = Number(valor)
+  return respostaDaGravacao(await mudarPlano('atividades_plano', id, { progresso, status: statusPeloProgresso(a.status, progresso) }), obraId)
 }
 
 // ─── Restrições (médio prazo) ───────────────────────────────────────────────
 // Cria (sem `id`) ou edita uma restrição. Só atividade sem subatividades.
 export async function salvarRestricao(perfil, obraId, campos, id = null) {
-  const barrado = await conferirPlano(perfil, obraId, true)
+  const barrado = await conferirEap(perfil, obraId)
   if (barrado) return barrado
   const erros = errosRestricao(campos, montarEap(atividadesDaObra(obraId)), { dia: hoje(), nova: !id })
   if (Object.keys(erros).length) return falha(Object.values(erros)[0])
   const linha = { atividade_id: campos.atividade_id, descricao: campos.descricao.trim(), tipo: campos.tipo, prazo: campos.prazo, responsavel: campos.responsavel.trim() }
   if (id) {
-    const r = restricoesDaObra(obraId).find((x) => x.id === id)
-    if (!r) return falha('Esta restrição não existe mais. Recarregue a página.')
-    Object.assign(r, linha)
-  } else {
-    plano.restricoes.push({ id: `rs-${Date.now()}-${++ultimoIdPlano}`, obra_id: obraId, ...linha, resolvida: false })
+    if (!restricoesDaObra(obraId).some((x) => x.id === id)) return falha(SUMIU.restricao)
+    return respostaDaGravacao(await mudarPlano('restricoes_plano', id, linha), obraId)
   }
-  return listaPlano(obraId)
+  return respostaDaGravacao(await inserirPlano('restricoes_plano', { obra_id: obraId, ...linha, resolvida: false }), obraId)
 }
 
 export async function resolverRestricao(perfil, obraId, id, resolvida) {
-  const barrado = await conferirPlano(perfil, obraId, true)
+  const barrado = await conferirEap(perfil, obraId)
   if (barrado) return barrado
-  const r = restricoesDaObra(obraId).find((x) => x.id === id)
-  if (!r) return falha('Esta restrição não existe mais. Recarregue a página.')
-  r.resolvida = resolvida
-  return listaPlano(obraId)
+  if (!restricoesDaObra(obraId).some((x) => x.id === id)) return falha(SUMIU.restricao)
+  return respostaDaGravacao(await mudarPlano('restricoes_plano', id, { resolvida }), obraId)
 }
 
 // Uma semana para trás (-1) ou para frente (+1).
 export async function moverRestricao(perfil, obraId, id, direcao, dia = hoje()) {
-  const barrado = await conferirPlano(perfil, obraId, true)
+  const barrado = await conferirEap(perfil, obraId)
   if (barrado) return barrado
   const r = restricoesDaObra(obraId).find((x) => x.id === id)
-  if (!r) return falha('Esta restrição não existe mais. Recarregue a página.')
+  if (!r) return falha(SUMIU.restricao)
   const { prazo, erro } = novoPrazo(r, direcao, dia)
   if (erro) return falha(erro)
-  r.prazo = prazo
-  return listaPlano(obraId)
+  return respostaDaGravacao(await mudarPlano('restricoes_plano', id, { prazo }), obraId)
 }
 
 // ─── Curto prazo (a semana) ─────────────────────────────────────────────────
 // O mestre também mexe aqui: quem vê a obra move no quadro e marca o checklist.
-const atividadeDaObra = (obraId, id) => atividadesDaObra(obraId).find((a) => a.id === id && !a.arquivada)
+// Mas o mestre só na semana ATUAL (erroSemanaDoMestre). `dia` = hoje; os testes passam outro.
+const atividadeAtivaDaObra = (obraId, id) => atividadesDaObra(obraId).find((a) => a.id === id && !a.arquivada)
+const foraDaSemanaDoMestre = (perfil, obraId, atividadeId, dia) => erroSemanaDoMestre(perfil.role, montarEap(atividadesDaObra(obraId)), atividadeId, dia)
 
-export async function moverNaSemana(perfil, obraId, id, status) {
-  const barrado = await conferirPlano(perfil, obraId, false)
+export async function moverNaSemana(perfil, obraId, id, status, dia = hoje()) {
+  const barrado = await conferirPlano(perfil, obraId)
   if (barrado) return barrado
   if (!STATUS_ATIVIDADE.includes(status)) return falha('Escolha uma coluna do quadro.')
-  const a = atividadeDaObra(obraId, id)
-  if (!a) return falha('Esta atividade não existe mais. Recarregue a página.')
-  if (atividadesDaObra(obraId).some((x) => x.pai_id === id && !x.arquivada)) return falha('Um grupo não entra no quadro: mova as atividades dentro dele.')
-  a.status = status
-  a.progresso = progressoPeloStatus(status, a.progresso)
-  if (status === 'Concluído') Object.assign(a, { causa_nao_realizado: null, semana_nao_realizado: null })
-  return listaPlano(obraId)
+  const a = atividadeAtivaDaObra(obraId, id)
+  if (!a) return falha(SUMIU.atividade)
+  if (temFilhosAtivos(atividadesDaObra(obraId), id)) return falha('Um grupo não entra no quadro: mova as atividades dentro dele.')
+  const doMestre = foraDaSemanaDoMestre(perfil, obraId, id, dia)
+  if (doMestre) return falha(doMestre)
+  const mudanca = { status, progresso: progressoPeloStatus(status, a.progresso) }
+  if (status === CONCLUIDO) Object.assign(mudanca, { causa_nao_realizado: null, semana_nao_realizado: null })
+  return respostaDaGravacao(await mudarPlano('atividades_plano', id, mudanca), obraId)
+}
+
+// "Não realizado" (atividade ou subtarefa): causa raiz da lista, semana que é uma
+// segunda-feira, e o mestre só na semana atual. Devolve null ou a frase de erro.
+function erroNaoRealizado(perfil, obraId, atividadeId, causa, semana, dia) {
+  const erro = erroCausa(causa)
+  if (erro) return erro
+  if (!semana || semanaDe(semana) !== semana) return 'Semana inválida. Recarregue a página.'
+  return podeMexerNaSemana(perfil.role, semana, semanaDe(dia)) ? foraDaSemanaDoMestre(perfil, obraId, atividadeId, dia) : SO_SEMANA_ATUAL
 }
 
 // "Não realizado" na semana: exige a causa raiz. Concluída não pode.
-export async function marcarNaoRealizado(perfil, obraId, id, causa, semana) {
-  const barrado = await conferirPlano(perfil, obraId, false)
+export async function marcarNaoRealizado(perfil, obraId, id, causa, semana, dia = hoje()) {
+  const barrado = await conferirPlano(perfil, obraId)
   if (barrado) return barrado
-  const erro = erroCausa(causa)
+  const a = atividadeAtivaDaObra(obraId, id)
+  if (!a) return falha(SUMIU.atividade)
+  if (!podeMarcarNaoRealizado(a)) return falha('Esta atividade já foi concluída.')
+  const erro = erroNaoRealizado(perfil, obraId, id, causa, semana, dia)
   if (erro) return falha(erro)
-  if (!semana || semanaDe(semana) !== semana) return falha('Semana inválida. Recarregue a página.')
-  const a = atividadeDaObra(obraId, id)
-  if (!a) return falha('Esta atividade não existe mais. Recarregue a página.')
-  if (a.status === 'Concluído') return falha('Esta atividade já foi concluída.')
-  Object.assign(a, { causa_nao_realizado: causa, semana_nao_realizado: semana })
-  return listaPlano(obraId)
+  return respostaDaGravacao(await mudarPlano('atividades_plano', id, { causa_nao_realizado: causa, semana_nao_realizado: semana }), obraId)
 }
 
-export async function salvarSubtarefa(perfil, obraId, atividadeId, titulo) {
-  const barrado = await conferirPlano(perfil, obraId, false)
+export async function salvarSubtarefa(perfil, obraId, atividadeId, titulo, dia = hoje()) {
+  const barrado = await conferirPlano(perfil, obraId)
   if (barrado) return barrado
   const erro = erroSubtarefa(titulo)
   if (erro) return falha(erro)
-  if (!atividadeDaObra(obraId, atividadeId)) return falha('Esta atividade não existe mais. Recarregue a página.')
+  if (!atividadeAtivaDaObra(obraId, atividadeId)) return falha(SUMIU.atividade)
+  const doMestre = foraDaSemanaDoMestre(perfil, obraId, atividadeId, dia)
+  if (doMestre) return falha(doMestre)
   const irmas = subtarefasDaObra(obraId).filter((s) => s.atividade_id === atividadeId)
-  plano.subtarefas.push({ id: `st-${Date.now()}-${++ultimoIdPlano}`, obra_id: obraId, atividade_id: atividadeId, ordem: Math.max(0, ...irmas.map((s) => s.ordem)) + 1, titulo: titulo.trim(), feita: false, causa_nao_realizado: null })
-  return listaPlano(obraId)
+  return respostaDaGravacao(await inserirPlano('subtarefas_plano', {
+    obra_id: obraId, atividade_id: atividadeId, ordem: proximaOrdemDe(irmas), titulo: titulo.trim(), feita: false, causa_nao_realizado: null, semana_nao_realizado: null,
+  }), obraId)
 }
 
-// Feita = sim/não. `causa` só quando NÃO feita ("Não realizado"); marcar feita limpa a causa.
-export async function marcarSubtarefa(perfil, obraId, id, feita, causa = null) {
-  const barrado = await conferirPlano(perfil, obraId, false)
+// Feita = sim/não. Marcar ou desmarcar limpa o "não realizado" (feita não tem causa).
+export async function marcarSubtarefa(perfil, obraId, id, feita, dia = hoje()) {
+  const barrado = await conferirPlano(perfil, obraId)
   if (barrado) return barrado
   const s = subtarefasDaObra(obraId).find((x) => x.id === id)
-  if (!s || !atividadeDaObra(obraId, s.atividade_id)) return falha('Esta subtarefa não existe mais. Recarregue a página.')
-  if (causa) {
-    const erro = erroCausa(causa)
-    if (erro) return falha(erro)
-  }
-  Object.assign(s, { feita, causa_nao_realizado: feita ? null : causa })
-  return listaPlano(obraId)
+  if (!s || !atividadeAtivaDaObra(obraId, s.atividade_id)) return falha(SUMIU.subtarefa)
+  const doMestre = foraDaSemanaDoMestre(perfil, obraId, s.atividade_id, dia)
+  if (doMestre) return falha(doMestre)
+  return respostaDaGravacao(await mudarPlano('subtarefas_plano', id, { feita, causa_nao_realizado: null, semana_nao_realizado: null }), obraId)
+}
+
+// Subtarefa "não realizada" NAQUELA semana, com a causa raiz (como a atividade).
+export async function subtarefaNaoRealizada(perfil, obraId, id, causa, semana, dia = hoje()) {
+  const barrado = await conferirPlano(perfil, obraId)
+  if (barrado) return barrado
+  const s = subtarefasDaObra(obraId).find((x) => x.id === id)
+  if (!s || !atividadeAtivaDaObra(obraId, s.atividade_id)) return falha(SUMIU.subtarefa)
+  if (s.feita) return falha('Esta subtarefa já foi feita.')
+  const erro = erroNaoRealizado(perfil, obraId, s.atividade_id, causa, semana, dia)
+  if (erro) return falha(erro)
+  return respostaDaGravacao(await mudarPlano('subtarefas_plano', id, { causa_nao_realizado: causa, semana_nao_realizado: semana }), obraId)
 }
