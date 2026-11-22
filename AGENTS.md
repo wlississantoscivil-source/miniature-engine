@@ -324,7 +324,6 @@ Histórico vai para `docs/DIARIO.md` e para o Git.
   - Ficou para depois:
     - a seta do topo da obra sai da ficha sem pedir confirmação;
     - concluir só com 100% é conferido só no app, não no banco (passo 10);
-    - a `mover_atividade` continua executável por PUBLIC (passo 10, `revoke … from public`).
 
 - **Os consertos do commit `f8ab953` não passaram pela revisão de código** que este arquivo
   pede antes de subir (`dados.js` e migrations). O engenheiro mandou guardar assim. **Rodar

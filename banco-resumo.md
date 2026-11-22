@@ -27,8 +27,9 @@ As 4 tabelas das Medições de empreiteiros e as funções `ativar_contrato_empr
 nelas; o mestre nunca (tudo é R$). As duas funções já não estão liberadas para o "público" do
 Postgres (`20261122190000_empreiteiros_funcoes_fechadas.sql`), então o `revoke … from anon` do passo
 10 fecha de verdade.
-⚠ A `mover_atividade` (Planejamento) **ainda está** executável por PUBLIC (achado da revisão de
-22/11): no passo 10, além do `revoke … from anon`, fazer `revoke all … from public`, senão nada fecha.
+A `mover_atividade` (Planejamento) também saiu do PUBLIC (`20261122200000_mover_atividade_fechada.sql`).
+Conferido em 22/11: nenhuma função do app fica executável por PUBLIC. Só a `tocar_updated_at` fica, e
+ela é inofensiva, porque é função de gatilho e o Postgres não deixa chamá-la direto.
 
 Só serve porque o app roda **apenas no computador do engenheiro**, com dados de exemplo.
 **Não publicar na Vercel assim.** No passo 10:
