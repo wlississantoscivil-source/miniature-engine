@@ -57,6 +57,11 @@ const TABELAS = [
   ['atividades_plano', mock.atividades_plano],
   ['restricoes_plano', mock.restricoes_plano],
   ['subtarefas_plano', mock.subtarefas_plano],
+  // Medições de empreiteiros (22/11/2026)
+  ['contratos_empreiteiro', mock.contratos_empreiteiro],
+  ['itens_empreiteiro', mock.itens_empreiteiro],
+  ['boletins_empreiteiro', mock.boletins_empreiteiro],
+  ['boletim_itens_empreiteiro', mock.boletim_itens_empreiteiro],
 ]
 
 let sql = `-- Carga inicial do Minha Obra: os dados de exemplo de src/lib/mockData.js.

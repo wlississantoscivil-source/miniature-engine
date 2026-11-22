@@ -42,6 +42,7 @@ for (const [nome, chamada] of [
   ['resumo', () => dados.resumoObra(carlos, 'o1')],
   ['lista de compras', () => dados.listaComprasObra(carlos, 'o1')],
   ['cadastro de fornecedores', () => dados.listarFornecedores(carlos)],
+  ['contratos de empreiteiros', () => dados.contratosEmpreiteiros(carlos, 'o1')],
 ]) {
   const r = await chamada()
   conferir(`mestre recusado em ${nome}`, [r.data, !!r.erro], [null, true])
@@ -72,7 +73,7 @@ conferir('aviso do topo soma 6 lançamentos', (await dados.avisosPainel(wlisses)
 // Grade de módulos: cada pessoa só vê a pendência do que pode abrir
 conferir('mestre vê só a pendência de presença e diário', Object.keys((await dados.pendenciasObra(carlos, 'o1')).data), ['presenca', 'diario'])
 conferir('auxiliar na UBS não vê presença nem equipe',
-  Object.keys((await dados.pendenciasObra(ana, 'o2')).data).sort(), ['fluxo', 'fornecedores', 'lista', 'notas', 'orcado', 'pagamentos', 'resumo'])
+  Object.keys((await dados.pendenciasObra(ana, 'o2')).data).sort(), ['empreiteiros', 'fluxo', 'fornecedores', 'lista', 'notas', 'orcado', 'pagamentos', 'resumo'])
 conferir('engenheiro vê a pendência de notas da Escola', (await dados.pendenciasObra(wlisses, 'o1')).data.notas.texto, '4 aguardando NF')
 conferir('mestre não lista fechamentos', !!(await dados.fechamentosObra(carlos, 'o1')).erro, true)
 

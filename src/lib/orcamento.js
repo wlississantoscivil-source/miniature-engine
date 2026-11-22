@@ -54,9 +54,11 @@ export const rotuloMes = (mes) => `${MESES[Number(mes.slice(5, 7)) - 1]}/${mes.s
 // - aPagarFornecedores: total das compras ainda não pagas (entra no mês atual)
 // - diariasEmAberto: [{ fim, valor }] quinzenas sem pagamento (no mês do fim;
 //   se o fim já passou, no mês atual, porque está atrasada)
+// - empreiteirosAPagar: [{ pagar_em, valor }] boletins de empreiteiro não pagos
+//   (no mês do pagar_em; se já passou, no mês atual)
 // - medicoes: [{ valor, valor_recebido, data_recebimento, data_prevista_recebimento, status }]
 //   (fase 3; vazio na fase 1)
-export function fluxoMensal({ inicio, hojeIso, mesesFrente = 3, pagamentos = [], pagamentosDiarias = [], aPagarFornecedores = 0, diariasEmAberto = [], medicoes = [] }) {
+export function fluxoMensal({ inicio, hojeIso, mesesFrente = 3, pagamentos = [], pagamentosDiarias = [], aPagarFornecedores = 0, diariasEmAberto = [], empreiteirosAPagar = [], medicoes = [] }) {
   const atual = mesDe(hojeIso)
   const ate = somarMes(atual, mesesFrente)
   const meses = []
@@ -73,7 +75,8 @@ export function fluxoMensal({ inicio, hojeIso, mesesFrente = 3, pagamentos = [],
     const fornecedores = pagamentos.filter((p) => noMes(m)(p.data)).reduce((t, p) => t + Number(p.valor), 0)
     const diarias = pagamentosDiarias.filter((p) => noMes(m)(p.data_pagamento)).reduce((t, p) => t + Number(p.valor_total), 0)
     const aPagar = (m === atual ? Number(aPagarFornecedores) : 0) +
-      diariasEmAberto.filter((d) => mesPrevisto(d.fim) === m).reduce((t, d) => t + Number(d.valor), 0)
+      diariasEmAberto.filter((d) => mesPrevisto(d.fim) === m).reduce((t, d) => t + Number(d.valor), 0) +
+      empreiteirosAPagar.filter((b) => mesPrevisto(b.pagar_em) === m).reduce((t, b) => t + Number(b.valor), 0)
     const entradas = recebidas + aReceber
     const saidas = fornecedores + diarias + aPagar
     const saldo = centavos(entradas - saidas)

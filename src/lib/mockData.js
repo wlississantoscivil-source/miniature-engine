@@ -296,3 +296,45 @@ export const subtarefas_plano = [
   sub('st8', 'o2', 'pb2', 1, 'Tomadas do consultório 1', true),
   sub('st9', 'o2', 'pb2', 2, 'Quadro de distribuição', false),
 ]
+
+// ─── Medições de empreiteiros (22/11/2026) ──────────────────────────────────
+// No banco desde 22/11/2026 (migration 20261122180000_medicoes_empreiteiros.sql);
+// estes dados viram a carga inicial pelo scripts/gerar-seed.mjs. Quase tudo na
+// Escola Vila Nova; a UBS Centro tem 2.
+// Nomes de empreiteiro fictícios.
+const contratoE = (id, obra_id, empreiteiro, descricao, status, tipo = null, valor_global = null) => ({
+  id, obra_id, empreiteiro, descricao, status, tipo, valor_global, criado_em: '2026-09-15',
+})
+export const contratos_empreiteiro = [
+  contratoE('ce1', 'o1', 'Gesso Nordeste', 'Forro de gesso das salas de aula', 'Aprovado / ativo', 'Global', 30000),
+  contratoE('ce2', 'o1', 'Drywall & Cia', 'Divisórias de drywall da administração', 'Aprovado / ativo', 'Por escopo'),
+  contratoE('ce3', 'o1', 'Zé Pedreiro Empreitadas', 'Alvenaria do muro de divisa', 'Em elaboração'),
+  contratoE('ce4', 'o1', 'Pinturas Litoral', 'Pintura interna e externa', 'Enviado p/ aprovação'),
+  contratoE('ce5', 'o1', 'Zé Pedreiro Empreitadas', 'Contrapiso do pátio coberto', 'Concluído', 'Global', 12000),
+  contratoE('ce6', 'o2', 'Hidráulica Bezerros', 'Instalações hidráulicas dos consultórios', 'Em elaboração'),
+  contratoE('ce7', 'o2', 'Serralheria Agreste', 'Portões e grades', 'Aprovado / ativo', 'Global', 8500),
+]
+
+export const itens_empreiteiro = [
+  { id: 'ie1', obra_id: 'o1', contrato_id: 'ce2', ordem: 1, descricao: 'Placas de drywall (montagem)', unidade: 'm²', quantidade: 200, preco_unitario: 80 },
+  { id: 'ie2', obra_id: 'o1', contrato_id: 'ce2', ordem: 2, descricao: 'Tratamento de juntas', unidade: 'm²', quantidade: 200, preco_unitario: 40 },
+  { id: 'ie3', obra_id: 'o1', contrato_id: 'ce2', ordem: 3, descricao: 'Tabica', unidade: 'm', quantidade: 50, preco_unitario: 120 },
+]
+
+// Boletim: no Por escopo a verdade é a quantidade de cada item
+// (boletim_itens_empreiteiro); o `valor` é o R$ que saiu dela ao salvar e é o
+// que vai para o "a pagar" da obra em `pagar_em` (padrão: fim da quinzena).
+export const boletins_empreiteiro = [
+  { id: 'be1', obra_id: 'o1', contrato_id: 'ce1', numero: 1, data: '2026-11-06', valor: 9000, pagar_em: '2026-11-15', pago: false },
+  { id: 'be2', obra_id: 'o1', contrato_id: 'ce2', numero: 1, data: '2026-10-30', valor: 8000, pagar_em: '2026-10-31', pago: true },
+  { id: 'be3', obra_id: 'o1', contrato_id: 'ce2', numero: 2, data: '2026-11-13', valor: 9600, pagar_em: '2026-11-30', pago: false },
+  { id: 'be4', obra_id: 'o1', contrato_id: 'ce5', numero: 1, data: '2026-09-25', valor: 6000, pagar_em: '2026-09-30', pago: true },
+  { id: 'be5', obra_id: 'o1', contrato_id: 'ce5', numero: 2, data: '2026-10-16', valor: 6000, pagar_em: '2026-10-31', pago: true },
+]
+export const boletim_itens_empreiteiro = [
+  { id: 'bi1', obra_id: 'o1', boletim_id: 'be2', item_id: 'ie1', quantidade: 80 },
+  { id: 'bi2', obra_id: 'o1', boletim_id: 'be2', item_id: 'ie2', quantidade: 40 },
+  { id: 'bi3', obra_id: 'o1', boletim_id: 'be3', item_id: 'ie1', quantidade: 60 },
+  { id: 'bi4', obra_id: 'o1', boletim_id: 'be3', item_id: 'ie2', quantidade: 60 },
+  { id: 'bi5', obra_id: 'o1', boletim_id: 'be3', item_id: 'ie3', quantidade: 20 },
+]

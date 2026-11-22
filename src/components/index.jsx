@@ -27,6 +27,7 @@ const ICONES = {
   user: <><circle cx="12" cy="8" r="4" /><path d="M4 21c0-4 3.6-6.5 8-6.5s8 2.5 8 6.5" /></>,
   sair: <path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10" />,
   plano: <><path d="M4 5h9M7 10h10M10 15h9M4 20h8" /><path d="M3 3v18" /></>,
+  regua: <><path d="M3 16L16 3l5 5L8 21z" /><path d="M7 12l2 2M10 9l2 2M13 6l2 2" /></>,
   presenca: <><rect x="4" y="4" width="16" height="17" rx="2" /><path d="M8 2v4M16 2v4M8 13l3 3 5-6" /></>,
 }
 

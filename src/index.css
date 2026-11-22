@@ -578,3 +578,51 @@ button.crono-nome:hover .crono-tit{text-decoration:underline}
 .sem-nova .inp{min-height:44px}
 .look-tipos button.causa{--tp:var(--cafe-2);--tp-tx:var(--cafe)}
 .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+
+/* medições de empreiteiros: quadro do contrato e cadastro do valor */
+@media (min-width:900px){.emp-quadro{grid-auto-columns:minmax(230px,1fr)}}
+.emp-valor{display:flex;align-items:center;flex-wrap:wrap;gap:8px;font-size:16px;font-weight:600;margin-top:2px}
+.emp-card .prog{margin-top:6px}
+.emp-mover{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:6px}
+.emp-mover .btn{padding:0 8px}
+.emp-mover .emp-avancar{grid-column:2}
+.emp-itens{display:flex;flex-direction:column;gap:10px}
+.emp-item{display:flex;flex-direction:column;gap:10px}
+.emp-item-top{display:flex;align-items:center;justify-content:space-between;gap:8px}
+.emp-item-nums{display:grid;grid-template-columns:88px 1fr 1fr;gap:8px}
+@media (max-width:380px){.emp-item-nums{grid-template-columns:1fr 1fr}.emp-item-nums .field:first-child{grid-column:1/-1}}
+.emp-item-tot{display:flex;justify-content:space-between;gap:8px;font-size:15px;color:var(--apagado)}
+.emp-item-tot b{color:var(--cafe);font-weight:600}
+.emp-total{display:flex;align-items:baseline;justify-content:space-between;flex-wrap:wrap;gap:8px}
+.emp-total b{font-size:22px;font-weight:600}
+/* medições de empreiteiros: ficha de medição */
+.emp-voltar{align-self:flex-start}
+.emp-ficha-cab{flex-direction:row;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px}
+.emp-ficha-nome{font-size:18px;font-weight:700}
+.emp-kpis{grid-template-columns:1fr 1fr}
+.emp-kpis .kpi:first-child{grid-column:1/-1}
+@media (min-width:700px){.emp-kpis{grid-template-columns:repeat(3,1fr)}.emp-kpis .kpi:first-child{grid-column:auto}}
+.emp-med .acts{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.emp-largo{grid-column:1/-1}
+.emp-ml-lista{display:flex;flex-direction:column;gap:10px}
+.emp-ml{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;padding:12px;border:1px solid var(--linha);border-radius:var(--rc);background:var(--branco)}
+.emp-ml.ruim{border-color:var(--cr);box-shadow:inset 4px 0 0 var(--cr)}
+.emp-ml-nome{grid-column:1/-1;display:flex;flex-direction:column;gap:2px}
+.emp-ml .field label{font-size:13px}
+.emp-ml-novo{grid-column:1/-1;display:flex;justify-content:space-between;gap:8px;font-size:15px;color:var(--apagado)}
+.emp-ml-novo b{color:var(--cafe);font-weight:600}
+.emp-ml-err{grid-column:1/-1}
+.emp-ml-cab{display:none}
+@media (min-width:900px){
+  .emp-ml{grid-template-columns:minmax(200px,2.2fr) repeat(3,minmax(90px,1fr)) minmax(110px,1fr);align-items:center;padding:8px 12px}
+  .emp-ml-nome,.emp-ml-novo,.emp-ml-err{grid-column:auto}
+  .emp-ml-err{grid-column:1/-1}
+  .emp-ml .field label,.emp-ml-rot{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+  .emp-ml-novo{justify-content:flex-end}
+  .emp-ml-cab{display:grid;background:none;border:0;padding:0 12px;font-size:13px;font-weight:600;color:var(--apagado)}
+  .emp-ml-cab span:not(:first-child){text-align:left}
+}
+.emp-rodape{display:grid;grid-template-columns:1fr;gap:8px;padding:12px;border-radius:var(--rc);background:var(--neutro-bg)}
+.emp-rodape>div{display:flex;justify-content:space-between;align-items:baseline;gap:8px;flex-wrap:wrap}
+.emp-rodape b{font-size:18px;font-weight:600}
+@media (min-width:700px){.emp-rodape{grid-template-columns:repeat(3,1fr)}.emp-rodape>div{flex-direction:column;align-items:flex-start;gap:2px}}

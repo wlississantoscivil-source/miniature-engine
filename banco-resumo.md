@@ -1,7 +1,7 @@
 # Resumo do banco — Minha Obra
 
 > A memória do banco para os próximos módulos e para o passo 10 (login e banco).
-> Atualizado em 20/11/2026. Detalhe de cada campo: `PRD-BACKEND.md`. O SQL de verdade:
+> Atualizado em 22/11/2026. Detalhe de cada campo: `PRD-BACKEND.md`. O SQL de verdade:
 > `supabase/migrations/`. Os dados de exemplo: `supabase-seed.sql`.
 
 ## Onde está
@@ -21,6 +21,14 @@ login. Está nas migrations `20261118200200_dev_acesso_provisorio.sql`,
 `20261120180100_dev_acesso_provisorio_planejamento.sql` (as 3 do Planejamento, liberada com o ok do engenheiro em 20/11).
 A função `mover_atividade` (Subir/Descer da EAP, numa gravação só) também está aberta para
 `anon` em `20261120190100_dev_acesso_provisorio_mover_atividade.sql`: no passo 10, `revoke execute … from anon`.
+As 4 tabelas das Medições de empreiteiros e as funções `ativar_contrato_empreiteiro` e
+`salvar_boletim_empreiteiro` estão abertas em `20261122180100_dev_acesso_provisorio_empreiteiros.sql`
+(pedido explícito do engenheiro em 22/11). No passo 10, só quem tem **Financeiro** na obra lê e grava
+nelas; o mestre nunca (tudo é R$). As duas funções já não estão liberadas para o "público" do
+Postgres (`20261122190000_empreiteiros_funcoes_fechadas.sql`), então o `revoke … from anon` do passo
+10 fecha de verdade.
+⚠ A `mover_atividade` (Planejamento) **ainda está** executável por PUBLIC (achado da revisão de
+22/11): no passo 10, além do `revoke … from anon`, fazer `revoke all … from public`, senão nada fecha.
 
 Só serve porque o app roda **apenas no computador do engenheiro**, com dados de exemplo.
 **Não publicar na Vercel assim.** No passo 10:
@@ -28,15 +36,15 @@ Só serve porque o app roda **apenas no computador do engenheiro**, com dados de
 1. Ligar `profiles` ao login (`auth.users`) e criar o gatilho de cadastro (perfil nasce `Pendente`).
    Os perfis de exemplo já existem: o gatilho deve **trocar o id do perfil de mesmo email pelo
    id do login** — todas as tabelas acompanham sozinhas (`on update cascade`).
-2. Uma migration nova que apaga as regras `dev_provisorio` (das 22 tabelas), tira a liberação de `anon`
-   (tabelas e a função `importar_planilha`) e cria as regras de verdade, por obra e por perfil
+2. Uma migration nova que apaga as regras `dev_provisorio` (das 26 tabelas), tira a liberação de `anon`
+   (tabelas e as funções `importar_planilha`, `mover_atividade`, `ativar_contrato_empreiteiro`, `salvar_boletim_empreiteiro`) e cria as regras de verdade, por obra e por perfil
    (`PRD-BACKEND.md`, "Permissões"). O teste que prova: o mestre não lê nenhuma linha de compras.
 3. Preencher `criado_por` / `atualizado_por` pelo login (`auth.uid()`), e não pela tela.
 4. `salvarDiario` grava e lê de volta o id (`insert … select`): a regra de **leitura** de
    `diarios_obra` tem que deixar o autor ler o que acabou de gravar, senão a gravação dá certo e a
    tela mostra erro. O mesmo vale para `fotos` quando o Storage entrar.
 
-## As tabelas (22)
+## As tabelas (26)
 
 | Tabela | O que guarda | Exemplo hoje |
 |---|---|---|
@@ -62,6 +70,10 @@ Só serve porque o app roda **apenas no computador do engenheiro**, com dados de
 | `atividades_plano` | A EAP do Planejamento: atividades em árvore (`pai_id`, até 3 níveis), datas, progresso real, coluna da semana (`A fazer`, `Em andamento`, `Concluído`), "não realizado" com causa e semana, arquivada. Pai e filho sempre da mesma obra (chave dupla `obra_id, id`) | 16 |
 | `restricoes_plano` | Restrições do médio prazo: o que impede uma atividade (`Material`, `Mão de obra`, `Método`, `Equipamento`, `Projeto`, `Segurança`, `Logística`), prazo, responsável (texto livre), resolvida | 4 |
 | `subtarefas_plano` | Checklist de cada atividade na semana: feita, ou não realizada com causa **e a semana** em que foi marcada (desde 22/11; a causa só conta naquela semana) | 9 |
+| `contratos_empreiteiro` | Medições de empreiteiros: o contrato de cada empreiteiro na obra (os cartões do Kanban). Empreiteiro (texto), serviço, coluna (`Em elaboração`, `Enviado p/ aprovação`, `Aprovado / ativo`, `Concluído`) e o valor: `Global` (valor fechado) ou `Por escopo` (soma dos itens). **Não é** a medição do órgão (`medicoes`) | 7 |
+| `itens_empreiteiro` | Os itens de um contrato `Por escopo`: descrição, unidade (`m²`, `m`, `un`, `vb`), quantidade e preço unitário | 3 |
+| `boletins_empreiteiro` | Cada boletim (Medição nº 1, nº 2… por contrato, sem número repetido): data, valor, **pagar em** e se já foi pago. O boletim não pago entra no "a pagar" da obra (painel, Resumo e Fluxo de caixa) | 5 |
+| `boletim_itens_empreiteiro` | Quanto de cada item foi medido em cada boletim (contrato `Por escopo`). É a **fonte da verdade**: o % e o R$ saem da quantidade | 5 |
 
 Ainda **não existem** (fase 3): `medicao_itens`. Nem os buckets de arquivo (Storage):
 quando entrar o bucket `fotos`, `fotos.arquivo_path` volta a ser obrigatório (PRD).
@@ -80,6 +92,13 @@ quando entrar o bucket `fotos`, `fotos.arquivo_path` volta a ser obrigatório (P
   `pagamentos`, `presencas`, `diarios_obra`.
 - **Importar planilha** é a função `importar_planilha`: tudo ou nada, recusa se houver medição,
   religa as compras à etapa de mesmo número.
+- **Medições de empreiteiros:** `ativar_contrato_empreiteiro` grava o valor ou os itens e ativa,
+  tudo ou nada, e só a partir de `Enviado p/ aprovação`. `salvar_boletim_empreiteiro` numera o
+  boletim, refaz o R$ a partir das quantidades e **recusa passar de 100%** (do item ou do contrato
+  Global), e só em contrato `Aprovado / ativo`. Testado em 22/11: 11 m² num item de 10 m² foi recusado.
+  Item com medição não pode ser apagado. `updated_at` automático em contratos e boletins.
+- Ainda só no app (não no banco): andar uma coluna por vez, concluir só com 100% e não voltar
+  para aprovação depois de medido (`erroMover`, em `src/lib/empreiteiros.js`).
 
 ## Regras do PRD que ainda NÃO estão no banco
 
@@ -107,6 +126,11 @@ quando entrar o bucket `fotos`, `fotos.arquivo_path` volta a ser obrigatório (P
 | Presença → Salvar presença | `salvarPresenca` | `presencas` |
 | Diário → Salvar diário | `salvarDiario` | `diarios_obra` (as fotos ainda não) |
 | Planilha → Importar | `importarPlanilha` | `planilhas_obra`, `etapas_obra`, `itens_contrato`, `compras` (via `importar_planilha`) |
+| Planejamento (EAP, restrições, semana) | `salvarAtividade` e as outras da seção | `atividades_plano`, `restricoes_plano`, `subtarefas_plano` |
+| Medições de empreiteiros → Novo contrato / Voltar / Avançar | `criarContratoEmpreiteiro`, `moverContratoEmpreiteiro` | `contratos_empreiteiro` |
+| … → Ativar contrato | `ativarContratoEmpreiteiro` | `contratos_empreiteiro`, `itens_empreiteiro` (via `ativar_contrato_empreiteiro`) |
+| … → Salvar medição | `salvarBoletimEmpreiteiro` | `boletins_empreiteiro`, `boletim_itens_empreiteiro` (via `salvar_boletim_empreiteiro`) |
+| … → Marcar como paga | `marcarBoletimPago` | `boletins_empreiteiro` |
 
 ## Como mexer no banco daqui para a frente
 

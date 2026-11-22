@@ -22,6 +22,10 @@ import {
   moverEntreIrmas, novoPrazo, podeEditarEap, podeMarcarNaoRealizado, podeMexerNaSemana, progressoPeloStatus, proximaOrdem, proximaOrdemDe, semanaDe,
   SO_SEMANA_ATUAL, STATUS_ATIVIDADE, statusPeloProgresso, temFilhosAtivos,
 } from './planejamento.js'
+import {
+  acumuladoPorItem, ATIVO, boletinsAPagar, calcularBoletim, ELABORACAO, ENVIADO, erroMover, errosContrato, GLOBAL, lerValorContrato, proximoNumero, resumoContrato,
+  temFicha,
+} from './empreiteiros.js'
 
 export const USAR_MOCK = false
 // import.meta.env só existe dentro do Vite (o app). No Node (testes) fica no mock.
@@ -42,6 +46,7 @@ const TABELAS = [
   'medicoes', 'fechamentos', 'pagamentos', 'notas_fiscais', 'compras', 'itens_lista_compra',
   'funcionarios', 'presencas', 'diarias_funcionarios', 'pagamentos_diarias', 'diarios_obra', 'fotos',
   'atividades_plano', 'restricoes_plano', 'subtarefas_plano',
+  'contratos_empreiteiro', 'itens_empreiteiro', 'boletins_empreiteiro', 'boletim_itens_empreiteiro',
 ]
 // Colunas com fuso (timestamptz): viram o horário local 'AAAA-MM-DDTHH:MM:SS'.
 // Colunas `date` chegam como 'AAAA-MM-DD' e ficam como estão (sem UTC).
@@ -173,7 +178,7 @@ export async function listarObrasPainel(perfil, agora = new Date()) {
       const aguardando = compras.filter((c) => c.status === 'Aguardando NF')
       linha.aguardando_nf = contarLancamentos(aguardando)
       linha.nf_atrasada = aguardando.some((c) => nfAtrasada(c, dia))
-      linha.a_pagar = soma(compras) - soma(db.pagamentos.filter((p) => p.obra_id === o.id))
+      linha.a_pagar = soma(compras) - soma(db.pagamentos.filter((p) => p.obra_id === o.id)) + soma(aPagarEmpreiteiros(o.id))
       linha.fechamentos_rascunho = db.fechamentos.filter((f) => f.obra_id === o.id && f.status === 'Rascunho').length
       pendente = pendente || linha.nf_atrasada || linha.fechamentos_rascunho > 0
     }
@@ -244,7 +249,7 @@ export async function resumoObra(perfil, obraId) {
     comprado_quinzena: soma(compras.filter((c) => dentro(c.data, q))),
     aguardando_qtd: contarLancamentos(aguardando),
     aguardando_valor: soma(aguardando),
-    a_pagar: soma(compras) - soma(pags),
+    a_pagar: soma(compras) - soma(pags) + soma(aPagarEmpreiteiros(obraId)),
     pago_mes: soma(pags.filter((p) => dentro(p.data, mes))),
     gastos: gastosPorCategoria(compras, valorDiariasNoPeriodo(obraId, { inicio: '1900-01-01', fim: '2999-12-31' })),
     homem_dia_mes: presMes.length,
@@ -631,6 +636,7 @@ export async function fluxoCaixa(perfil, obraId) {
       pagamentosDiarias: db.pagamentos_diarias.filter((p) => p.obra_id === obraId),
       aPagarFornecedores: Math.max(0, soma(compras) - soma(pags)),
       diariasEmAberto,
+      empreiteirosAPagar: aPagarEmpreiteiros(obraId),
     }),
   })
 }
@@ -675,6 +681,8 @@ export async function pendenciasObra(perfil, obraId, agora = new Date()) {
       : { texto: 'Nenhuma NF pendente', tom: 'ok' }
     p.pagamentos = !pagsObra.length ? { texto: 'Nenhum pagamento ainda', tom: '' }
       : semNota ? { texto: `${semNota} sem nota`, tom: 'cr' } : { texto: 'Todos com nota', tom: 'ok' }
+    const ativos = empreiteiros().contratos.filter((c) => c.obra_id === obraId && c.status === ATIVO).length
+    p.empreiteiros = { texto: ativos ? plural(ativos, 'contrato ativo', 'contratos ativos') : 'Contratos e boletins', tom: '' }
   }
   if (a.presenca) {
     const temDiarioHoje = db.diarios_obra.some((d) => d.obra_id === obraId && d.data === dia)
@@ -1033,4 +1041,189 @@ export async function subtarefaNaoRealizada(perfil, obraId, id, causa, semana, d
   const erro = erroNaoRealizado(perfil, obraId, s.atividade_id, causa, semana, dia)
   if (erro) return falha(erro)
   return respostaDaGravacao(await mudarPlano('subtarefas_plano', id, { causa_nao_realizado: causa, semana_nao_realizado: semana }), obraId)
+}
+
+// ─── Medições de empreiteiros ───────────────────────────────────────────────
+// No banco desde 22/11/2026 (migration 20261122180000_medicoes_empreiteiros.sql):
+// `contratos_empreiteiro`, `itens_empreiteiro`, `boletins_empreiteiro` e
+// `boletim_itens_empreiteiro`, lidos na carga junto com o resto. Gravações de
+// uma linha usam inserirPlano/mudarPlano (genéricas, apesar do nome); ativar o
+// contrato e salvar o boletim mexem em várias linhas e vão por funções do banco
+// (tudo ou nada), que repetem a trava dos 100%.
+// Só quem tem Financeiro na obra entra (o mestre nunca, porque tudo aqui é R$).
+const empreiteiros = () => ({
+  contratos: db.contratos_empreiteiro,
+  itens: db.itens_empreiteiro,
+  boletins: db.boletins_empreiteiro,
+  boletimItens: db.boletim_itens_empreiteiro,
+})
+let seqEmp = 0
+const idEmp = (prefixo) => `${prefixo}-${Date.now().toString(36)}-${++seqEmp}`
+
+async function conferirEmpreiteiros(perfil, obraId) {
+  const semBanco = await pronto()
+  if (semBanco) return semBanco
+  if (!porId(db.obras, obraId)) return falha('Obra não encontrada.')
+  if (!acesso(perfil, obraId).financeiro) return falha(SEM_PERMISSAO)
+  return null
+}
+
+// Chama uma função do banco e relê as tabelas (ela criou linhas com id do banco).
+// Devolve null ou a frase de erro para a tela.
+async function funcaoEmpreiteiro(nome, args) {
+  const supabase = await banco()
+  const { error } = await supabase.rpc(nome, args)
+  esquecerCarga()
+  if (error) return erroDoBanco(error, nome)
+  const recarga = await pronto()
+  return recarga ? recarga.erro : null
+}
+
+// O contrato com o resumo (valor, medido, saldo) e os itens em ordem.
+function comResumo(c) {
+  const m = empreiteiros()
+  return {
+    ...c,
+    ...resumoContrato(c, m.itens, m.boletins, m.boletimItens),
+    itens: m.itens.filter((i) => i.contrato_id === c.id).sort((a, b) => a.ordem - b.ordem),
+  }
+}
+
+function quadroEmpreiteiros(obraId) {
+  const m = empreiteiros()
+  const contratos = m.contratos.filter((c) => c.obra_id === obraId).map(comResumo)
+  // Sugestões para o campo Empreiteiro: o cadastro de fornecedores de Mão de obra.
+  const sugestoes = [...new Set([
+    ...db.fornecedores.filter((f) => f.ativo && f.categoria_padrao === 'Mão de obra').map((f) => f.nome),
+    ...m.contratos.map((c) => c.empreiteiro),
+  ])].sort((a, b) => a.localeCompare(b, 'pt-BR'))
+  return { obra_id: obraId, contratos, sugestoes }
+}
+
+const contratoDaObra = (obraId, id) => empreiteiros().contratos.find((c) => c.id === id && c.obra_id === obraId)
+const respostaQuadro = (erro, obraId) => (erro ? falha(erro) : ok(quadroEmpreiteiros(obraId)))
+
+export async function contratosEmpreiteiros(perfil, obraId) {
+  const barrado = await conferirEmpreiteiros(perfil, obraId)
+  if (barrado) return barrado
+  return ok(quadroEmpreiteiros(obraId))
+}
+
+// Novo contrato: nasce em "Em elaboração", sem valor.
+export async function criarContratoEmpreiteiro(perfil, obraId, campos) {
+  const barrado = await conferirEmpreiteiros(perfil, obraId)
+  if (barrado) return barrado
+  const erros = errosContrato(campos)
+  if (Object.keys(erros).length) return falha(Object.values(erros)[0])
+  const erro = await inserirPlano('contratos_empreiteiro', {
+    obra_id: obraId, empreiteiro: campos.empreiteiro.trim(), descricao: campos.descricao.trim(),
+    status: ELABORACAO, tipo: null, valor_global: null, criado_em: hoje(),
+  })
+  return respostaQuadro(erro, obraId)
+}
+
+// Mover uma coluna para frente ou para trás (a ativação tem função própria).
+export async function moverContratoEmpreiteiro(perfil, obraId, id, destino) {
+  const barrado = await conferirEmpreiteiros(perfil, obraId)
+  if (barrado) return barrado
+  const c = contratoDaObra(obraId, id)
+  if (!c) return falha('Este contrato não existe mais. Recarregue a tela.')
+  const m = empreiteiros()
+  const erro = erroMover(c, destino, resumoContrato(c, m.itens, m.boletins, m.boletimItens))
+  if (erro) return falha(erro)
+  return respostaQuadro(await mudarPlano('contratos_empreiteiro', id, { status: destino }), obraId)
+}
+
+// "Enviado p/ aprovação" → "Aprovado / ativo", gravando o valor junto:
+// Global (só o total) ou Por escopo (itens; o total é a soma deles).
+export async function ativarContratoEmpreiteiro(perfil, obraId, id, form) {
+  const barrado = await conferirEmpreiteiros(perfil, obraId)
+  if (barrado) return barrado
+  const c = contratoDaObra(obraId, id)
+  if (!c) return falha('Este contrato não existe mais. Recarregue a tela.')
+  if (c.status !== ENVIADO) return falha('Só contrato enviado para aprovação pode ser ativado.')
+  const { erros, dados } = lerValorContrato(form)
+  if (!dados) return falha(Object.values(erros)[0])
+  if (COM_BANCO) {
+    const erro = await funcaoEmpreiteiro('ativar_contrato_empreiteiro', {
+      p_contrato: id, p_tipo: dados.tipo, p_valor: dados.valor_global, p_itens: dados.itens,
+    })
+    return respostaQuadro(erro, obraId)
+  }
+  const m = empreiteiros()
+  for (let k = m.itens.length - 1; k >= 0; k--) if (m.itens[k].contrato_id === id) m.itens.splice(k, 1)
+  dados.itens.forEach((i, k) => m.itens.push({ id: idEmp('ie'), obra_id: obraId, contrato_id: id, ordem: k + 1, ...i }))
+  Object.assign(c, { tipo: dados.tipo, valor_global: dados.valor_global, status: ATIVO })
+  return ok(quadroEmpreiteiros(obraId))
+}
+
+// Boletins de empreiteiro ainda não pagos da obra: entram no "a pagar" do
+// painel, do Resumo e do Fluxo de caixa, na data `pagar_em`.
+function aPagarEmpreiteiros(obraId) {
+  return boletinsAPagar(empreiteiros().boletins.filter((b) => b.obra_id === obraId))
+}
+
+// Ficha de Medição: o contrato com o resumo, os itens com o já medido e os
+// boletins do mais recente para o mais antigo.
+function fichaDoContrato(obraId, c) {
+  const m = empreiteiros()
+  const boletins = m.boletins.filter((b) => b.contrato_id === c.id)
+  const acumulados = acumuladoPorItem(boletins, m.boletimItens)
+  return {
+    obra_id: obraId,
+    contrato: comResumo(c),
+    acumulados,
+    boletins: [...boletins].sort((a, b) => b.numero - a.numero),
+    proximo_numero: proximoNumero(boletins),
+  }
+}
+const respostaFicha = (erro, obraId, contratoId) => {
+  if (erro) return falha(erro)
+  const c = contratoDaObra(obraId, contratoId)
+  return c ? ok(fichaDoContrato(obraId, c)) : falha('Este contrato não existe mais nesta obra.')
+}
+
+export async function fichaMedicaoEmpreiteiro(perfil, obraId, contratoId) {
+  const barrado = await conferirEmpreiteiros(perfil, obraId)
+  if (barrado) return barrado
+  const c = contratoDaObra(obraId, contratoId)
+  if (!c) return falha('Este contrato não existe mais nesta obra.')
+  if (!temFicha(c)) return falha('A ficha de medição abre para contrato Aprovado / ativo ou Concluído.')
+  return ok(fichaDoContrato(obraId, c))
+}
+
+// Só contrato "Aprovado / ativo" recebe medição, e nada passa de 100% acumulado
+// (conferido aqui e de novo no banco, na função salvar_boletim_empreiteiro).
+export async function salvarBoletimEmpreiteiro(perfil, obraId, contratoId, form) {
+  const barrado = await conferirEmpreiteiros(perfil, obraId)
+  if (barrado) return barrado
+  const c = contratoDaObra(obraId, contratoId)
+  if (!c) return falha('Este contrato não existe mais nesta obra.')
+  if (c.status !== ATIVO) return falha('Só contrato Aprovado / ativo pode receber medição.')
+  const ficha = fichaDoContrato(obraId, c)
+  const conta = calcularBoletim(c, ficha.contrato.itens, ficha.contrato, ficha.acumulados, form)
+  if (Object.keys(conta.erros).length) return falha(Object.values(conta.erros)[0])
+  const medidos = conta.linhas.filter((l) => l.quantidade > 0).map((l) => ({ item_id: l.item_id, quantidade: l.quantidade }))
+  if (COM_BANCO) {
+    const erro = await funcaoEmpreiteiro('salvar_boletim_empreiteiro', {
+      p_contrato: c.id, p_data: form.data, p_pagar_em: form.pagar_em,
+      p_valor: c.tipo === GLOBAL ? conta.total : null, p_itens: c.tipo === GLOBAL ? null : medidos,
+    })
+    return respostaFicha(erro, obraId, c.id)
+  }
+  const m = empreiteiros()
+  const id = idEmp('be')
+  m.boletins.push({ id, obra_id: obraId, contrato_id: c.id, numero: ficha.proximo_numero, data: form.data, valor: conta.total, pagar_em: form.pagar_em, pago: false })
+  for (const l of medidos) m.boletimItens.push({ id: idEmp('bi'), obra_id: obraId, boletim_id: id, ...l })
+  return ok(fichaDoContrato(obraId, c))
+}
+
+export async function marcarBoletimPago(perfil, obraId, boletimId) {
+  const barrado = await conferirEmpreiteiros(perfil, obraId)
+  if (barrado) return barrado
+  const b = empreiteiros().boletins.find((x) => x.id === boletimId && x.obra_id === obraId)
+  const c = b && contratoDaObra(obraId, b.contrato_id)
+  if (!c) return falha('Este boletim não existe mais nesta obra.')
+  if (b.pago) return falha('Este boletim já está pago.')
+  return respostaFicha(await mudarPlano('boletins_empreiteiro', b.id, { pago: true }), obraId, c.id)
 }

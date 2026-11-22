@@ -79,6 +79,7 @@ export const ABAS_OBRA = [
   { id: 'fornecedores', rotulo: 'Fornecedores', precisa: 'financeiro' },
   { id: 'notas', rotulo: 'Notas', precisa: 'financeiro' },
   { id: 'pagamentos', rotulo: 'Pagamentos', precisa: 'financeiro' },
+  { id: 'empreiteiros', rotulo: 'Medições de empreiteiros', precisa: 'financeiro' },
   { id: 'presenca', rotulo: 'Presença', precisa: 'presenca' },
   { id: 'diario', rotulo: 'Diário', precisa: 'presenca' },
   { id: 'planejamento', rotulo: 'Planejamento', precisa: 'ver' },

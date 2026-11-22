@@ -256,6 +256,42 @@ insert into public.subtarefas_plano (id, obra_id, atividade_id, ordem, titulo, f
   (pg_temp.u('st9'), pg_temp.u('o2'), pg_temp.u('pb2'), 2, 'Quadro de distribuição', false, null, null)
 on conflict do nothing;
 
+-- contratos_empreiteiro (7)
+insert into public.contratos_empreiteiro (id, obra_id, empreiteiro, descricao, status, tipo, valor_global, criado_em) values
+  (pg_temp.u('ce1'), pg_temp.u('o1'), 'Gesso Nordeste', 'Forro de gesso das salas de aula', 'Aprovado / ativo', 'Global', 30000, '2026-09-15'),
+  (pg_temp.u('ce2'), pg_temp.u('o1'), 'Drywall & Cia', 'Divisórias de drywall da administração', 'Aprovado / ativo', 'Por escopo', null, '2026-09-15'),
+  (pg_temp.u('ce3'), pg_temp.u('o1'), 'Zé Pedreiro Empreitadas', 'Alvenaria do muro de divisa', 'Em elaboração', null, null, '2026-09-15'),
+  (pg_temp.u('ce4'), pg_temp.u('o1'), 'Pinturas Litoral', 'Pintura interna e externa', 'Enviado p/ aprovação', null, null, '2026-09-15'),
+  (pg_temp.u('ce5'), pg_temp.u('o1'), 'Zé Pedreiro Empreitadas', 'Contrapiso do pátio coberto', 'Concluído', 'Global', 12000, '2026-09-15'),
+  (pg_temp.u('ce6'), pg_temp.u('o2'), 'Hidráulica Bezerros', 'Instalações hidráulicas dos consultórios', 'Em elaboração', null, null, '2026-09-15'),
+  (pg_temp.u('ce7'), pg_temp.u('o2'), 'Serralheria Agreste', 'Portões e grades', 'Aprovado / ativo', 'Global', 8500, '2026-09-15')
+on conflict do nothing;
+
+-- itens_empreiteiro (3)
+insert into public.itens_empreiteiro (id, obra_id, contrato_id, ordem, descricao, unidade, quantidade, preco_unitario) values
+  (pg_temp.u('ie1'), pg_temp.u('o1'), pg_temp.u('ce2'), 1, 'Placas de drywall (montagem)', 'm²', 200, 80),
+  (pg_temp.u('ie2'), pg_temp.u('o1'), pg_temp.u('ce2'), 2, 'Tratamento de juntas', 'm²', 200, 40),
+  (pg_temp.u('ie3'), pg_temp.u('o1'), pg_temp.u('ce2'), 3, 'Tabica', 'm', 50, 120)
+on conflict do nothing;
+
+-- boletins_empreiteiro (5)
+insert into public.boletins_empreiteiro (id, obra_id, contrato_id, numero, data, valor, pagar_em, pago) values
+  (pg_temp.u('be1'), pg_temp.u('o1'), pg_temp.u('ce1'), 1, '2026-11-06', 9000, '2026-11-15', false),
+  (pg_temp.u('be2'), pg_temp.u('o1'), pg_temp.u('ce2'), 1, '2026-10-30', 8000, '2026-10-31', true),
+  (pg_temp.u('be3'), pg_temp.u('o1'), pg_temp.u('ce2'), 2, '2026-11-13', 9600, '2026-11-30', false),
+  (pg_temp.u('be4'), pg_temp.u('o1'), pg_temp.u('ce5'), 1, '2026-09-25', 6000, '2026-09-30', true),
+  (pg_temp.u('be5'), pg_temp.u('o1'), pg_temp.u('ce5'), 2, '2026-10-16', 6000, '2026-10-31', true)
+on conflict do nothing;
+
+-- boletim_itens_empreiteiro (5)
+insert into public.boletim_itens_empreiteiro (id, obra_id, boletim_id, item_id, quantidade) values
+  (pg_temp.u('bi1'), pg_temp.u('o1'), pg_temp.u('be2'), pg_temp.u('ie1'), 80),
+  (pg_temp.u('bi2'), pg_temp.u('o1'), pg_temp.u('be2'), pg_temp.u('ie2'), 40),
+  (pg_temp.u('bi3'), pg_temp.u('o1'), pg_temp.u('be3'), pg_temp.u('ie1'), 60),
+  (pg_temp.u('bi4'), pg_temp.u('o1'), pg_temp.u('be3'), pg_temp.u('ie2'), 60),
+  (pg_temp.u('bi5'), pg_temp.u('o1'), pg_temp.u('be3'), pg_temp.u('ie3'), 20)
+on conflict do nothing;
+
 -- presencas (832)
 insert into public.presencas (id, obra_id, funcionario_id, data, situacao, criado_por, created_at)
 select pg_temp.u('pr-' || eq.fs[i] || '-' || v.d), pg_temp.u(v.o), pg_temp.u(eq.fs[i]), v.d::date,

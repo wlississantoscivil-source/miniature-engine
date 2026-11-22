@@ -23,7 +23,10 @@ Uma pergunta decide: **"isto continuaria verdade se a tela fosse outra?"**
   permissões, diárias, gastos, mensagens de WhatsApp.
 - `src/lib/planilha.js` — leitor da planilha da licitação (recebe as linhas já
   tiradas do .xlsx; não importa o SheetJS). `src/lib/orcamento.js` — Orçado x
-  Realizado por etapa e Fluxo de caixa mês a mês.
+  Realizado por etapa e Fluxo de caixa mês a mês. `src/lib/empreiteiros.js` —
+  Medições de empreiteiros (contrato do empreiteiro, fluxo, valor global ou por
+  escopo, % medido). **Não confundir com a Medição do órgão** (`itens_contrato`,
+  `medicoes`, fase 3): são módulos e dados separados.
 - `src/lib/supabase.js` — a conexão, com a chave publicável. Só `dados.js` importa
   (com `import()`, para os testes no Node não precisarem dela).
 - `supabase/migrations/` — todo SQL que muda o banco. `supabase-seed.sql` — os dados
@@ -78,6 +81,10 @@ Ainda não ligado. O padrão será: a pessoa diz "sobe pro GitHub", o agente sob
 com git, e a Vercel publica sozinha. A pessoa não digita comando.
 
 ## Armadilhas desta base
+
+- **Função nova no banco nasce executável por PUBLIC** (qualquer um, sem login). Toda
+  migration que cria função leva `revoke all on function … from public` antes do `grant`
+  (padrão de `importar_planilha`). Sem isso, o `revoke … from anon` do passo 10 não fecha nada.
 
 - **O banco está ABERTO até o passo 10.** A migration `…_dev_acesso_provisorio.sql`
   libera todas as tabelas para `anon` (regra `dev_provisorio`). Enquanto ela existir,
@@ -291,6 +298,33 @@ Histórico vai para `docs/DIARIO.md` e para o Git.
   ano seguinte); cor e ícone por tipo de restrição (pedido dele, contra a regra visual).
 
 ### Pela metade / pendente
+
+- **Medições de empreiteiros (22/11), no banco e conferido** (as 4 gravações chegaram à tabela
+  e à obra certas e sobrevivem ao F5). Os dados de teste foram apagados com o ok dele; o
+  banco voltou à carga de exemplo.
+  aba `empreiteiros` na obra (só quem tem Financeiro), com o Kanban, o cadastro do valor e a
+  Ficha de Medição (`obra-empreiteiros-ficha.jsx`, aberta em `params.sub` = id do contrato).
+  - **No banco:** 4 tabelas (`contratos_empreiteiro`, `itens_empreiteiro`,
+    `boletins_empreiteiro`, `boletim_itens_empreiteiro`), migrations `20261122180000` e
+    `…180100` (regra aberta de desenvolvimento, pedida pelo engenheiro). Seed aplicado.
+  - Ativar o contrato e salvar o boletim vão pelas funções `ativar_contrato_empreiteiro` e
+    `salvar_boletim_empreiteiro`, tudo ou nada. A segunda **refaz a trava dos 100%** e o R$ a
+    partir das quantidades. É a mesma regra de `calcularBoletim`: mudou lá, muda cá.
+  - Telas otimistas: o boletim, o "paga" e o cartão no Kanban mudam na hora e voltam se o
+    banco recusar.
+  - **O boletim vira "a pagar" na data `pagar_em`** (padrão: fim da quinzena): painel, Resumo e
+    coluna "A pagar" do Fluxo de caixa (`fluxoMensal`, parâmetro `empreiteirosAPagar`). Não vira
+    compra nem pagamento: não aparece em Fornecedores, Notas, Pagamentos nem no fechamento.
+  - Revisão de código rodada em 22/11 e consertada:
+    - as funções saíram do PUBLIC (`20261122190000`);
+    - o medido passou a ser a soma dos boletins;
+    - os centavos ficaram iguais aos do banco;
+    - as regras "tem ficha", "pode medir" e "atrasado" foram para a lib;
+    - a atualização otimista ficou completa.
+  - Ficou para depois:
+    - a seta do topo da obra sai da ficha sem pedir confirmação;
+    - concluir só com 100% é conferido só no app, não no banco (passo 10);
+    - a `mover_atividade` continua executável por PUBLIC (passo 10, `revoke … from public`).
 
 - **Os consertos do commit `f8ab953` não passaram pela revisão de código** que este arquivo
   pede antes de subir (`dados.js` e migrations). O engenheiro mandou guardar assim. **Rodar
